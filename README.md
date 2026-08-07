@@ -9,6 +9,16 @@
 | Edward Augusto Ramirez Rodriguez | 0000324316        |
 | Jorge Antonio Vidal Orozco       | 0000393815        |
 
+## Workflows
+
+-  Ramas principales: develop, laboratory, production 
+-  CI/CD: docker.yaml para integración y despliegue.
+
+## Docker
+
+-  Dockerfile: define la construcción de la imagen. 
+-  Despliegue: mediante contenedores, publicación en Docker Hub y despliegue en AWS.
+
 ## Estructura de Paquetes Base
 
 - **application** → Casos de uso / Lógica de negocio
@@ -66,16 +76,6 @@ Para mantener la arquitectura limpia:
 - **Patrón Estructural: Adapter** 
   Traduce objetos de la web a dominio y viceversa mediante DTOs y Mappers.
   Mantiene las capas aisladas y evita exponer entidades de dominio directamente.
-
-## Workflows
-
--  Ramas principales: develop, laboratory, production 
--  CI/CD: docker.yaml para integración y despliegue.
-
-## Docker
-
--  Dockerfile: define la construcción de la imagen. 
--  Despliegue: mediante contenedores, publicación en Docker Hub y despliegue en AWS.
 
 ## 🚀 Beneficios
 

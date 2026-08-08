@@ -10,7 +10,7 @@ jobs:
 
     steps:
       # 1. Descargar el código
-      - name: Checkout repo
+      - name: Checkout repo asociado
         uses: actions/checkout@v3
 
       # 2. Log in a Docker Hub

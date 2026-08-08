@@ -1,6 +1,0 @@
-name: Integracion Develop
-on:
-  pull_request:
-    branches:
-      - laboratory
-jobs:

@@ -39,11 +39,11 @@ jobs:
 
       # 6. Construir la imagen Docker usando el JAR generado
       - name: Build Docker image
-        run: docker build -t lfal328/inventario-products:latest .
+        run: docker build -t ${{ secrets.DOCKER_USERNAME }}/inventario-products:latest .
 
       # 7. Subir la imagen a Docker Hub
       - name: Push to Docker Hub
-        run: docker push lfal328/inventario-products:latest
+        run: docker push ${{ secrets.DOCKER_USERNAME }}/inventario-products:latest
 
       # 8. Configurar acceso a Kubernetes
       - name: Set up Kubeconfig

@@ -53,13 +53,12 @@ jobs:
 
       # 8. Escaneo de seguridad con Trivy
       - name: Trivy Image Scan
-        uses: aquasecurity/trivy-action@0.12.0
+        uses: aquasecurity/trivy-action@0.20.0
         with:
           image-ref: ${{ secrets.DOCKER_USERNAME }}/inventario-products:${{ github.sha }}
           format: 'table'
           exit-code: '0'
           ignore-unfixed: true
-
       # 9. Subir imagen a Docker Hub
       - name: Push to Docker Hub
         run: docker push ${{ secrets.DOCKER_USERNAME }}/inventario-products:${{ github.sha }}

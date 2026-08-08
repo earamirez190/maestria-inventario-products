@@ -3,10 +3,10 @@ kind: Service
 metadata:
   name: inventario-products-service
 spec:
-  type: LoadBalancer
   selector:
     app: inventario-products
   ports:
     - protocol: TCP
-      port: 9090
-      targetPort: 9090
+      port: 80
+      targetPort: 8080
+  type: ClusterIP

@@ -46,7 +46,7 @@ jobs:
       - name: Build Docker image
         run: docker build -t ${{ secrets.DOCKER_USERNAME }}/inventario-products:${{ github.sha }} .
 
-     -  name: Trivy Image Scan
+      - name: Trivy Image Scan
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ secrets.DOCKER_USERNAME }}/inventario-products:${{ github.sha }}

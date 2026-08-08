@@ -1,3 +1,43 @@
 spring:
+  main:
+    allow-bean-definition-overriding: true
   application:
     name: maestria-inventario
+  profiles:
+    active: dev   # Perfil activo por defecto
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+  datasource:
+    url: jdbc:mysql://localhost:3306/maestria_inventario_products
+    username: root
+    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    database-platform: org.hibernate.dialect.MySQL8Dialect
+server:
+  port: 9093
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: jdbc:mysql://prod-server:3306/maestria_inventario_products
+    username: prod_user
+    password: prod_password
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate   # En producción no se crean/alteran tablas automáticamente
+    show-sql: false
+    database-platform: org.hibernate.dialect.MySQL8Dialect
+server:
+  port: 8090

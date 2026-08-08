@@ -2,15 +2,16 @@ name: CI/CD - Build, Push & Deploy
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main" ]   # Se ejecuta solo cuando haces push a main
+  workflow_dispatch:       # También puedes lanzarlo manualmente desde GitHub
 
 jobs:
-  build-and-deploy:
+  build-deploy:
     runs-on: ubuntu-latest
 
     steps:
       # 1. Descargar el código
-      - name: Checkout repo asociado
+      - name: Checkout repo
         uses: actions/checkout@v3
 
       # 2. Log in a Docker Hub

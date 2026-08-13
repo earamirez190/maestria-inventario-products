@@ -1,6 +1,6 @@
 # 📦 Arquitectura de Inventario Productos
 
-## 馃 Integrante 懃
+##  Integrantes
 
 | Nombre completo                  | Código Estudiante |
 |----------------------------------|-------------------|

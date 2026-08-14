@@ -1,69 +1,74 @@
-name: CI/CD DevSecOps
+name: CD Kubernetes
 
 on:
-  push:
-    branches: [ "main", "develop" ]
+  workflow_run:
+    workflows: ["CI DevSecOps"]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/maestria-inventario-products
+
 jobs:
-  build-test-scan:
+  build-and-push:
+    name: Build and push image
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
-    permissions:
-      contents: write   # necesario para hacer commit y push
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Set up JDK 21
-        uses: actions/setup-java@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
-          distribution: 'temurin'
-          java-version: '21'
-          cache: gradle
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Grant execute permission for Gradlew
-        run: chmod +x gradlew
-
-      - name: Build & Test with Gradle
-        run: ./gradlew clean build test --stacktrace --info
-
-      - name: SonarQube Scan
-        uses: sonarsource/sonarcloud-github-action@v2
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
         with:
-          args: >
-            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
-            -Dsonar.organization=${{ secrets.SONAR_ORG }}
-            -Dsonar.host.url=https://sonarcloud.io
-            -Dsonar.login=${{ secrets.SONAR_TOKEN }}
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.IMAGE_NAME }}:latest
 
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+  deploy-kubernetes:
+    name: Deploy to Kubernetes
+    needs: build-and-push
+    runs-on: ubuntu-latest
 
-      - name: Build Docker image
-        run: docker build -t ${{ secrets.DOCKER_USERNAME }}/inventario-products:${{ github.sha }} .
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Trivy Image Scan
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          image-ref: ${{ secrets.DOCKER_USERNAME }}/inventario-products:${{ github.sha }}
-          format: 'table'
-          exit-code: '0'
-          ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH'
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
 
-      - name: Push to Docker Hub
-        run: docker push ${{ secrets.DOCKER_USERNAME }}/inventario-products:${{ github.sha }}
-
-      - name: Update Kubernetes manifests
+      - name: Configure kubeconfig
         run: |
-          sed -i "s|image: .*$|image: ${{ secrets.DOCKER_USERNAME }}/inventario-products:${{ github.sha }}|" k8s/deployment.yaml
-          git config --global user.name "github-actions"
-          git config --global user.email "actions@github.com"
-          git add k8s/deployment.yaml
-          git commit -m "Update image tag to ${{ github.sha }}" || echo "No changes to commit"
-          git push
+          mkdir -p "$HOME/.kube"
+          echo "${{ secrets.KUBE_CONFIG }}" > "$HOME/.kube/config"
+          chmod 600 "$HOME/.kube/config"
+
+      - name: Apply Kubernetes manifests
+        run: |
+          kubectl apply -f k8s/
+
+      - name: Rollout application
+        run: |
+          kubectl set image deployment/maestria-inventario-products \
+            maestria-inventario-products=${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            -n default
+          kubectl rollout status deployment/maestria-inventario-products -n default --timeout=180s
+

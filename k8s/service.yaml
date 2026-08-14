@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: maestria-inventario-products
+  namespace: default
+spec:
+  selector:
+    app: maestria-inventario-products
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 9090
+  type: LoadBalancer

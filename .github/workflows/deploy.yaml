@@ -1,0 +1,73 @@
+name: CD Kubernetes
+
+on:
+  workflow_run:
+    workflows: ["CI DevSecOps"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/maestria-inventario-products
+
+jobs:
+  build-and-push:
+    name: Build and push image
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.IMAGE_NAME }}:latest
+
+  deploy-kubernetes:
+    name: Deploy to Kubernetes
+    needs: build-and-push
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p "$HOME/.kube"
+          echo "${{ secrets.KUBE_CONFIG }}" > "$HOME/.kube/config"
+          chmod 600 "$HOME/.kube/config"
+
+      - name: Apply Kubernetes manifests
+        run: |
+          kubectl apply -f k8s/
+
+      - name: Rollout application
+        run: |
+          kubectl set image deployment/maestria-inventario-products \
+            maestria-inventario-products=${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            -n default
+          kubectl rollout status deployment/maestria-inventario-products -n default --timeout=180s

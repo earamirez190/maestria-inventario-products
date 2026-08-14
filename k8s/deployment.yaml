@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: maestria-inventario-products
+  namespace: default
+  labels:
+    app: maestria-inventario-products
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: maestria-inventario-products
+  template:
+    metadata:
+      labels:
+        app: maestria-inventario-products
+    spec:
+      containers:
+        - name: maestria-inventario-products
+          image: ghcr.io/earamirez190/maestria-inventario-products:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 9090
+          env:
+            - name: SERVER_PORT
+              value: "9090"
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:mysql://mysql:3306/maestria_inventario_products"
+            - name: SPRING_DATASOURCE_USERNAME
+              value: "root"
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: "root"
+            - name: SPRING_JPA_HIBERNATE_DDL_AUTO
+              value: "update"
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "500m"
+              memory: "1Gi"

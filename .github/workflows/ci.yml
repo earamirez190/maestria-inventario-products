@@ -1,0 +1,81 @@
+name: CI DevSecOps
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - laboratory
+  pull_request:
+    branches:
+      - main
+      - develop
+      - laboratory
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ci-devsecops:
+    name: Build, test, Docker and Trivy
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: maestria_inventario_products
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      SPRING_DATASOURCE_URL: jdbc:mysql://127.0.0.1:3306/maestria_inventario_products
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      - name: Grant Gradle wrapper permission
+        run: chmod +x ./gradlew
+
+      - name: Run tests
+        run: ./gradlew clean test --no-daemon
+
+      - name: Build application artifact
+        run: ./gradlew bootJar --no-daemon
+
+      - name: Build Docker image
+        run: docker build -t inventory-products:${{ github.sha }} .
+
+      - name: Scan Docker image with Trivy
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: inventory-products:${{ github.sha }}
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "0"
+
+      - name: Upload application artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: inventory-products-jar
+          path: build/libs/*.jar
+          if-no-files-found: error

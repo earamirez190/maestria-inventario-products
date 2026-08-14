@@ -5,7 +5,8 @@ services:
     ports:
       - "9090:9090"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/maestria-inventario-products
+      SERVER_PORT: 9090
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/maestria_inventario_products
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: root
     depends_on:
@@ -16,7 +17,7 @@ services:
     container_name: inventario-products-mysql
     environment:
       MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: maestria-inventario-products
+      MYSQL_DATABASE: maestria_inventario_products
     ports:
       - "3306:3306"
     volumes:

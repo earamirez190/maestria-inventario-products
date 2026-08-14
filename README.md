@@ -1,6 +1,6 @@
-# 📦 Arquitectura de Inventario Productos
+# Arquitectura de Inventario Productos
 
-##  Integrantes
+## Integrantes
 
 | Nombre completo                  | Código Estudiante |
 |----------------------------------|-------------------|
@@ -11,13 +11,22 @@
 
 ## Workflows
 
--  Ramas principales: develop, laboratory, production 
--  CI/CD: docker.yaml para integración y despliegue.
+- Ramas principales: `develop`, `laboratory`, `main`.
+- CI y DevSecOps: `.github/workflows/ci.yml`.
+- El pipeline ejecuta pruebas con MySQL, construye el JAR, construye la imagen Docker y ejecuta Trivy.
+- Esta entrega no despliega en Kubernetes, AWS ni Azure.
 
 ## Docker
 
--  Dockerfile: define la construcción de la imagen. 
--  Despliegue: mediante contenedores, publicación en Docker Hub y despliegue en AWS.
+- `Dockerfile`: construye la aplicacion Spring Boot con Java 21.
+- `docker-compose.yml`: levanta la aplicacion y MySQL para pruebas locales.
+- No se publica imagen en DockerHub ni se despliega en un cluster.
+
+Flujo implementado:
+
+```text
+Commit -> GitHub -> GitHub Actions -> Gradle tests -> Build JAR -> Docker image -> Trivy scan
+```
 
 ## Estructura de Paquetes Base
 
@@ -49,9 +58,9 @@ Para mantener la arquitectura limpia:
 ## Principios SOLID y Clean Architecture
 
 - **S - Responsabilidad Única**:
-    - `Product` solo maneja el estado del producto.
-    - `ProductRepository` define cómo interactuar con el almacenamiento.
-    - `InMemoryProductRepository` se encarga de la lógica específica de guardar en memoria.
+  - `Product` solo maneja el estado del producto.
+  - `ProductRepository` define cómo interactuar con el almacenamiento.
+  - `InMemoryProductRepository` se encarga de la lógica específica de guardar en memoria.
 
 - **D - Inversión de Dependencias**:  
   Los Casos de Uso dependen de la abstracción `ProductRepository`, no de la implementación concreta.
@@ -73,17 +82,16 @@ Para mantener la arquitectura limpia:
   Cada estrategia se encapsula en una clase distinta, cumpliendo Open/Closed.
 
 
-- **Patrón Estructural: Adapter** 
+- **Patrón Estructural: Adapter**
   Traduce objetos de la web a dominio y viceversa mediante DTOs y Mappers.
   Mantiene las capas aisladas y evita exponer entidades de dominio directamente.
 
-## 🚀 Beneficios
+## Beneficios
 
--  Builder → creación de productos limpia y extensible.
--  Strategy → lógica de negocio flexible y mantenible. 
--  Adapter + DTOs → API segura y desacoplada del dominio. 
--  Clean Architecture → independencia tecnológica, fácil evolución. 
--  CI/CD con Docker → despliegue automatizado y portable.
-
+-  Builder: creacion de productos limpia y extensible.
+-  Strategy: logica de negocio flexible y mantenible.
+-  Adapter + DTOs: API segura y desacoplada del dominio.
+-  Clean Architecture: independencia tecnologica y facil evolucion.
+-  CI y DevSecOps: validacion automatica, construccion reproducible y escaneo de vulnerabilidades.
 
 ---

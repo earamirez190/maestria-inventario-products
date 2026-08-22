@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   ci-devsecops:
-    name: Build, Test, SonarQube, Docker and Security Scan
+    name: Build, Test, SonarCloud, Docker and Security Scan
     runs-on: ubuntu-latest
 
     services:
@@ -66,12 +66,12 @@ jobs:
       - name: Build application artifact
         run: ./gradlew bootJar --no-daemon
 
-      # 🔹 6. Análisis SonarQube
-      - name: SonarQube Scan
-        run: ./gradlew sonarqube -Dsonar.gradle.skipCompile=true
+      # 🔹 6. Análisis SonarCloud
+      - name: SonarCloud Scan
+        run: ./gradlew sonar -Dsonar.gradle.skipCompile=true
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: http://localhost:9001
+          SONAR_HOST_URL: https://sonarcloud.io
 
       # 🔹 7. Construir imagen Docker
       - name: Build Docker image

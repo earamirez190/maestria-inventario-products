@@ -3,15 +3,11 @@ name: CI DevSecOps
 on:
   push:
     branches:
-      - main
-      - develop
-      - laboratory
+      - '**'          # corre en todas las ramas
   pull_request:
     branches:
-      - main
-      - develop
-      - laboratory
-  workflow_dispatch:
+      - '**'          # corre en todos los PR
+  workflow_dispatch:   # ejecución manual
 
 permissions:
   contents: read

@@ -63,11 +63,14 @@ jobs:
         run: ./gradlew bootJar --no-daemon
 
       # 🔹 6. Análisis SonarCloud
-      - name: SonarCloud Scan
-        run: ./gradlew sonar -Dsonar.gradle.skipCompile=true
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: https://sonarcloud.io
+   - name: SonarCloud Scan
+  uses: SonarSource/sonarcloud-github-action@v2
+  with:
+    args: >
+      -Dsonar.projectKey=LuisFernandoAlvarez_Maestria-Devops-Actividad2
+      -Dsonar.organization=luisfernandoalvarez
+      -Dsonar.host.url=https://sonarcloud.io
+      -Dsonar.login=${{ secrets.SONAR_TOKEN }}
 
       # 🔹 7. Construir imagen Docker
       - name: Build Docker image

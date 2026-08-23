@@ -62,15 +62,13 @@ jobs:
       - name: Build application artifact
         run: ./gradlew bootJar --no-daemon
 
-      # 🔹 6. Análisis SonarCloud
-   - name: SonarCloud Scan
-  uses: SonarSource/sonarcloud-github-action@v2
-  with:
-    args: >
-      -Dsonar.projectKey=LuisFernandoAlvarez_Maestria-Devops-Actividad2
-      -Dsonar.organization=luisfernandoalvarez
-      -Dsonar.host.url=https://sonarcloud.io
-      -Dsonar.login=${{ secrets.SONAR_TOKEN }}
+      # 🔹 6. Análisis SonarCloud con Gradle Wrapper
+      - name: SonarCloud Scan
+        run: ./gradlew sonar \
+          -Dsonar.projectKey=LuisFernandoAlvarez_Maestria-Devops-Actividad2 \
+          -Dsonar.organization=luisfernandoalvarez \
+          -Dsonar.host.url=https://sonarcloud.io \
+          -Dsonar.login=${{ secrets.SONAR_TOKEN }}
 
       # 🔹 7. Construir imagen Docker
       - name: Build Docker image
@@ -98,6 +96,4 @@ jobs:
       - name: Upload application artifact
         uses: actions/upload-artifact@v4
         with:
-          name: inventory-products-jar
-          path: build/libs/*.jar
-          if-no-files-found: error
+          name: inventory

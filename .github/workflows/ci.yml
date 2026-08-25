@@ -58,7 +58,7 @@ jobs:
 
       # 🔹 4. Compilar y correr pruebas
       - name: Run tests
-        run: ./gradlew clean test --no-daemon
+        run: ./gradlew clean test -Dspring.profiles.active=test --no-daemon
 
       # 🔹 5. Construir artefacto
       - name: Build application artifact

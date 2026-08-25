@@ -2,6 +2,8 @@ server:
   port: 9090
 
 spring:
+  application:
+    name: maestria-inventario-products
   datasource:
     url: jdbc:mysql://mysql:3306/maestria_inventario_products
     username: root
@@ -16,11 +18,15 @@ management:
   endpoints:
     web:
       exposure:
-        include: health, info, prometheus
+        include: health, info, metrics, prometheus
   endpoint:
+    health:
+      show-details: always
     prometheus:
       enabled: true
   metrics:
+    tags:
+      application: ${spring.application.name}
     export:
       prometheus:
         enabled: true

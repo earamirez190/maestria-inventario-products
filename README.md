@@ -19,8 +19,14 @@
 ## Docker
 
 - `Dockerfile`: construye la aplicacion Spring Boot con Java 21.
-- `docker-compose.yml`: levanta la aplicacion y MySQL para pruebas locales.
+- `docker-compose.yml`: levanta la aplicacion, MySQL, Prometheus y Grafana para pruebas locales.
 - No se publica imagen en DockerHub ni se despliega en un cluster.
+
+### Monitoreo con Prometheus y Grafana
+
+La aplicación expone métricas de Spring Boot en `http://localhost:9090/actuator/prometheus`.
+Prometheus se configura en `prometheus.yml` y se descarga en `http://localhost:9091`.
+Grafana queda disponible en `http://localhost:3000` con usuario `admin` y contraseña `admin`.
 
 Flujo implementado:
 

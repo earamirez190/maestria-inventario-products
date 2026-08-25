@@ -91,9 +91,3 @@ jobs:
           command: test
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-
-      # 🔹 10. Publicar artefacto
-      - name: Upload application artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: inventory

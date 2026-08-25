@@ -1,4 +1,4 @@
-name: CD Kubernetes
+name: CD Google Cloud
 
 on:
   workflow_run:
@@ -9,66 +9,132 @@ on:
 
 permissions:
   contents: read
-  packages: write
+  id-token: write
 
 env:
-  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/maestria-inventario-products
+  PROJECT_ID: mydemo-505323
+  GAR_LOCATION: us-central1
+  GAR_REPOSITORY: actividad1-images
+  IMAGE_NAME: maestria-inventario-products
+  IMAGE_REPOSITORY: us-central1-docker.pkg.dev/mydemo-505323/actividad1-images/maestria-inventario-products
+  GKE_CLUSTER: actividad1-gke
+  GKE_LOCATION: us-central1-a
+  K8S_NAMESPACE: actividad1
+  WIF_PROVIDER: projects/612267958923/locations/global/workloadIdentityPools/github-pool/providers/github-provider-actividad1
+  GCP_SERVICE_ACCOUNT: github-actions-sa@mydemo-505323.iam.gserviceaccount.com
 
 jobs:
-  build-and-push:
-    name: Build and push image
+  deploy:
+    name: Build, push and deploy to GKE
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
     steps:
+      - name: Resolve commit SHA and image tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            echo "IMAGE_TAG=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_ENV"
+          else
+            echo "IMAGE_TAG=${{ github.sha }}" >> "$GITHUB_ENV"
+          fi
+
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v6
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
         with:
-          context: .
-          push: true
-          tags: |
-            ${{ env.IMAGE_NAME }}:${{ github.sha }}
-            ${{ env.IMAGE_NAME }}:latest
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.GCP_SERVICE_ACCOUNT }}
 
-  deploy-kubernetes:
-    name: Deploy to Kubernetes
-    needs: build-and-push
-    runs-on: ubuntu-latest
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v3
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker "${GAR_LOCATION}-docker.pkg.dev" --quiet
 
-      - name: Set up kubectl
-        uses: azure/setup-kubectl@v4
-
-      - name: Configure kubeconfig
+      - name: Build Docker image
         run: |
-          mkdir -p "$HOME/.kube"
-          echo "${{ secrets.KUBE_CONFIG }}" > "$HOME/.kube/config"
-          chmod 600 "$HOME/.kube/config"
+          docker build \
+            -t "${IMAGE_REPOSITORY}:${IMAGE_TAG}" \
+            -t "${IMAGE_REPOSITORY}:latest" \
+            .
 
-      - name: Apply Kubernetes manifests
+      - name: Push Docker image to Artifact Registry
         run: |
-          kubectl apply -f k8s/
+          docker push "${IMAGE_REPOSITORY}:${IMAGE_TAG}"
+          docker push "${IMAGE_REPOSITORY}:latest"
 
-      - name: Rollout application
+      - name: Get GKE credentials
+        uses: google-github-actions/get-gke-credentials@v3
+        with:
+          cluster_name: ${{ env.GKE_CLUSTER }}
+          location: ${{ env.GKE_LOCATION }}
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Verify Kubernetes connection
         run: |
-          kubectl set image deployment/maestria-inventario-products \
-            maestria-inventario-products=${{ env.IMAGE_NAME }}:${{ github.sha }} \
-            -n default
-          kubectl rollout status deployment/maestria-inventario-products -n default --timeout=180s
+          kubectl cluster-info
+          kubectl get namespace "${K8S_NAMESPACE}" || true
 
+      - name: Apply namespace
+        run: kubectl apply -f k8s/namespace.yaml
+
+      - name: Verify database secret exists
+        run: kubectl get secret database-secret -n "${K8S_NAMESPACE}"
+
+      - name: Apply shared Kubernetes resources
+        run: |
+          kubectl apply -f k8s/configmap.yaml
+          kubectl apply -f k8s/mysql-pvc.yaml
+          kubectl apply -f k8s/mysql-service.yaml
+
+      - name: Deploy MySQL
+        run: |
+          kubectl apply -f k8s/mysql-deployment.yaml
+          kubectl rollout status deployment/mysql -n "${K8S_NAMESPACE}" --timeout=300s
+
+      - name: Apply application service
+        run: kubectl apply -f k8s/service.yaml
+
+      - name: Deploy Spring Boot image by SHA
+        run: |
+          kubectl set image --local \
+            -f k8s/deployment.yaml \
+            maestria-inventario-products="${IMAGE_REPOSITORY}:${IMAGE_TAG}" \
+            -o yaml | kubectl apply -f -
+          kubectl rollout status deployment/maestria-inventario-products -n "${K8S_NAMESPACE}" --timeout=300s
+
+      - name: Show Kubernetes resources
+        run: |
+          kubectl get pods -n "${K8S_NAMESPACE}"
+          kubectl get services -n "${K8S_NAMESPACE}"
+          kubectl get pvc -n "${K8S_NAMESPACE}"
+
+      - name: Show external IP
+        run: |
+          EXTERNAL_IP="$(kubectl get service maestria-inventario-products -n "${K8S_NAMESPACE}" -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
+          echo "EXTERNAL_IP=${EXTERNAL_IP}" >> "$GITHUB_ENV"
+          echo "Application external IP: ${EXTERNAL_IP}"
+
+      - name: Validate public API
+        run: |
+          for attempt in $(seq 1 30); do
+            if [ -n "${EXTERNAL_IP}" ]; then
+              status="$(curl -sS -o /tmp/products-response.txt -w "%{http_code}" "http://${EXTERNAL_IP}/api/products" || true)"
+              if [ "${status}" = "200" ]; then
+                echo "API responded with HTTP 200"
+                exit 0
+              fi
+              echo "Attempt ${attempt}: HTTP status ${status}"
+            else
+              echo "Attempt ${attempt}: external IP is not available yet"
+              EXTERNAL_IP="$(kubectl get service maestria-inventario-products -n "${K8S_NAMESPACE}" -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
+              echo "EXTERNAL_IP=${EXTERNAL_IP}" >> "$GITHUB_ENV"
+            fi
+            sleep 10
+          done
+          echo "API did not respond with HTTP 200 after retries"
+          exit 1

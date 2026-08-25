@@ -58,18 +58,32 @@ jobs:
 
       # 🔹 4. Compilar y correr pruebas
       - name: Run tests
-        run: ./gradlew clean test -Dspring.profiles.active=test --no-daemon
+        run: ./gradlew clean test -Dspring.profiles.active=test --no-daemon --stacktrace
+
+      # Upload test reports and jacoco even if tests fail
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            build/reports/tests/test
+            build/test-results
+            build/reports/jacoco
 
       # 🔹 5. Construir artefacto
       - name: Build application artifact
+        if: success()
         run: ./gradlew bootJar --no-daemon
 
       # 🔹 6. Construir imagen Docker
       - name: Build Docker image
+        if: success()
         run: docker build -t inventory-products:${{ github.sha }} .
 
       # 🔹 7. Escaneo de seguridad con Trivy
       - name: Scan Docker image with Trivy
+        if: success()
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: inventory-products:${{ github.sha }}

@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   ci-devsecops:
-    name: Build, Test, SonarCloud, Docker and Security Scan
+    name: Build, Test, Docker and Security Scan
     runs-on: ubuntu-latest
 
     services:
@@ -62,19 +62,11 @@ jobs:
       - name: Build application artifact
         run: ./gradlew bootJar --no-daemon
 
-      # 🔹 6. Análisis SonarCloud con Gradle Wrapper
-      - name: SonarCloud Scan
-        run: ./gradlew sonar \
-          -Dsonar.projectKey=LuisFernandoAlvarez_Maestria-Devops-Actividad2 \
-          -Dsonar.organization=luisfernandoalvarez \
-          -Dsonar.host.url=https://sonarcloud.io \
-          -Dsonar.login=${{ secrets.SONAR_TOKEN }}
-
-      # 🔹 7. Construir imagen Docker
+      # 🔹 6. Construir imagen Docker
       - name: Build Docker image
         run: docker build -t inventory-products:${{ github.sha }} .
 
-      # 🔹 8. Escaneo de seguridad con Trivy
+      # 🔹 7. Escaneo de seguridad con Trivy
       - name: Scan Docker image with Trivy
         uses: aquasecurity/trivy-action@v0.36.0
         with:
@@ -84,7 +76,7 @@ jobs:
           ignore-unfixed: true
           exit-code: "0"
 
-      # 🔹 9. Escaneo de dependencias con Snyk
+      # 🔹 8. Escaneo de dependencias con Snyk
       - name: Snyk Security Scan
         uses: snyk/actions/gradle@master
         with:

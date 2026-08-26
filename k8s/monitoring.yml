@@ -13,7 +13,8 @@ data:
       - job_name: 'spring-boot-app'
         metrics_path: '/actuator/prometheus'
         static_configs:
-          - targets: ['maestria-inventario-products:9090']
+          # Scrape the app running in GCP via its public LoadBalancer IP
+          - targets: ['34.45.99.49:80']
             labels:
               app: 'maestria-inventario-products'
 ---

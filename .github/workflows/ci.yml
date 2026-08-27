@@ -78,7 +78,18 @@ jobs:
         if: success()
         run: docker build -t inventory-products:${{ github.sha }} .
 
-      # 🔹 8. Escaneo de seguridad con Trivy
+      # 🔹 8. Escaneo de la imagen con Snyk (solo reportar)
+      - name: Scan Docker image with Snyk
+        if: success()
+        continue-on-error: true
+        uses: snyk/actions/docker@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          image: inventory-products:${{ github.sha }}
+          args: --severity-threshold=high --file=Dockerfile
+
+      # 🔹 9. Escaneo de seguridad con Trivy
       - name: Scan Docker image with Trivy
         if: success()
         uses: aquasecurity/trivy-action@v0.36.0

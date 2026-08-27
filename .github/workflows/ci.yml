@@ -58,17 +58,26 @@ jobs:
             build/test-results
             build/reports/jacoco
 
-      # 🔹 5. Construir artefacto
+      # 🔹 5. Escaneo de dependencias con Snyk
+      - name: Scan dependencies with Snyk
+        if: success()
+        uses: snyk/actions/gradle@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high --fail-on=updating --all-projects
+
+      # 🔹 6. Construir artefacto
       - name: Build application artifact
         if: success()
         run: ./gradlew bootJar --no-daemon
 
-      # 🔹 6. Construir imagen Docker
+      # 🔹 7. Construir imagen Docker
       - name: Build Docker image
         if: success()
         run: docker build -t inventory-products:${{ github.sha }} .
 
-      # 🔹 7. Escaneo de seguridad con Trivy
+      # 🔹 8. Escaneo de seguridad con Trivy
       - name: Scan Docker image with Trivy
         if: success()
         uses: aquasecurity/trivy-action@v0.36.0

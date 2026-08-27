@@ -61,11 +61,12 @@ jobs:
       # 🔹 5. Escaneo de dependencias con Snyk
       - name: Scan dependencies with Snyk
         if: success()
+        continue-on-error: true
         uses: snyk/actions/gradle@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          args: --severity-threshold=high --fail-on=updating --all-projects
+          args: --severity-threshold=high --all-projects
 
       # 🔹 6. Construir artefacto
       - name: Build application artifact

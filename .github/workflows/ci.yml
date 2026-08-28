@@ -3,68 +3,95 @@ name: CI DevSecOps
 on:
   push:
     branches:
-      - main
-      - develop
-      - laboratory
+      - '**'          # corre en todas las ramas
   pull_request:
     branches:
-      - main
-      - develop
-      - laboratory
-  workflow_dispatch:
+      - '**'          # corre en todos los PR
+  workflow_dispatch:   # ejecución manual
 
 permissions:
   contents: read
 
 jobs:
   ci-devsecops:
-    name: Build, test, Docker and Trivy
+    name: Build, Test, Docker and Security Scan
     runs-on: ubuntu-latest
 
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: maestria_inventario_products
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=10
-
     env:
-      SPRING_DATASOURCE_URL: jdbc:mysql://127.0.0.1:3306/maestria_inventario_products
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: root
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_PROFILES_ACTIVE: test
+      SPRING_DATASOURCE_URL: jdbc:h2:mem:maestria_test;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+      SPRING_DATASOURCE_USERNAME: sa
+      SPRING_DATASOURCE_PASSWORD: ""
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.h2.Driver
+      SPRING_JPA_HIBERNATE_DDL_AUTO: create-drop
+      SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.H2Dialect
 
     steps:
+      # 🔹 1. Checkout
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
 
+      # 🔹 2. Configurar JDK 21
       - name: Set up Java 21
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "21"
           cache: gradle
 
+      # 🔹 3. Permisos Gradle
       - name: Grant Gradle wrapper permission
         run: chmod +x ./gradlew
 
+      # 🔹 4. Compilar y correr pruebas
       - name: Run tests
-        run: ./gradlew clean test --no-daemon
+        run: ./gradlew clean test -Dspring.profiles.active=test --no-daemon --stacktrace
 
+      # Upload test reports and jacoco even if tests fail
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            build/reports/tests/test
+            build/test-results
+            build/reports/jacoco
+
+      # 🔹 5. Escaneo de dependencias con Snyk
+      - name: Scan dependencies with Snyk
+        if: success()
+        continue-on-error: true
+        uses: snyk/actions/gradle@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high --all-projects
+
+      # 🔹 6. Construir artefacto
       - name: Build application artifact
+        if: success()
         run: ./gradlew bootJar --no-daemon
 
+      # 🔹 7. Construir imagen Docker
       - name: Build Docker image
+        if: success()
         run: docker build -t inventory-products:${{ github.sha }} .
 
+      # 🔹 8. Escaneo de la imagen con Snyk (solo reportar)
+      - name: Scan Docker image with Snyk
+        if: success()
+        continue-on-error: true
+        uses: snyk/actions/docker@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          image: inventory-products:${{ github.sha }}
+          args: --severity-threshold=high --file=Dockerfile
+
+      # 🔹 9. Escaneo de seguridad con Trivy
       - name: Scan Docker image with Trivy
+        if: success()
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: inventory-products:${{ github.sha }}
@@ -72,10 +99,3 @@ jobs:
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: "0"
-
-      - name: Upload application artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: inventory-products-jar
-          path: build/libs/*.jar
-          if-no-files-found: error

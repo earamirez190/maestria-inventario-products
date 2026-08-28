@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: actividad1
+data:
+  SERVER_PORT: "9090"
+  SPRING_DATASOURCE_URL: "jdbc:mysql://mysql:3306/maestria_inventario_products?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+  SPRING_JPA_HIBERNATE_DDL_AUTO: "update"

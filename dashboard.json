@@ -1,0 +1,64 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Inventario Products - SLIs",
+    "panels": [
+      {
+        "title": "Latencia p95 (ms)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=\"inventario-products\"}[1m])) by (le))",
+            "legendFormat": "p95 Latencia"
+          }
+        ],
+        "yaxes": [
+          { "format": "ms", "label": "Latencia" },
+          { "format": "short" }
+        ]
+      },
+      {
+        "title": "Errores 5xx",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum(rate(http_server_requests_seconds_count{job=\"inventario-products\",status=~\"5..\"}[1m]))",
+            "legendFormat": "Errores 5xx"
+          }
+        ],
+        "yaxes": [
+          { "format": "req/s", "label": "Requests/seg" },
+          { "format": "short" }
+        ]
+      },
+      {
+        "title": "Disponibilidad (2xx vs total)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum(rate(http_server_requests_seconds_count{job=\"inventario-products\",status=~\"2..\"}[1m])) / sum(rate(http_server_requests_seconds_count{job=\"inventario-products\"}[1m]))",
+            "legendFormat": "Disponibilidad"
+          }
+        ],
+        "yaxes": [
+          { "format": "percent", "label": "Disponibilidad" },
+          { "format": "short" }
+        ]
+      },
+      {
+        "title": "Memoria JVM usada",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "jvm_memory_used_bytes{job=\"inventario-products\",area=\"heap\"}",
+            "legendFormat": "Heap usado"
+          }
+        ],
+        "yaxes": [
+          { "format": "bytes", "label": "Memoria" },
+          { "format": "short" }
+        ]
+      }
+    ]
+  }
+}

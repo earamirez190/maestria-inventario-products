@@ -23,10 +23,15 @@
 - No se publica imagen en DockerHub ni se despliega en un cluster.
 
 ### Monitoreo con Prometheus y Grafana
+- `Prometheus`: Configurado mediante prometheus.yml para realizar scraping de las métricas expuestas por Spring Boot Actuator, disponible en `http://localhost:9091`.
+- `Grafana`: Incluye un tablero preconfigurado (dashboard.json) para visualizar el estado, la memoria, el tráfico HTTP y la salud general de la API, disponible en `http://localhost:3000` con usuario `admin` y contraseña `admin`.
+- `Uso con Docker` Compose: Se puede levantar el entorno de monitoreo ejecutando docker-compose up -d.
 
-La aplicación expone métricas de Spring Boot en `http://localhost:9090/actuator/prometheus`.
-Prometheus se configura en `prometheus.yml` y se descarga en `http://localhost:9091`.
-Grafana queda disponible en `http://localhost:3000` con usuario `admin` y contraseña `admin`.
+- La aplicación expone métricas de Spring Boot en `http://localhost:9090/actuator/prometheus`.
+
+## Calidad y Seguridad (DevSecOps)
+- `SonarQube`: Análisis estático de código para medir deuda técnica, cobertura y code smells (configurado en sonar-project.properties).
+- `Trivy`: Escaneo de vulnerabilidades (CVEs) en las imágenes de Docker generadas durante la etapa de CI en GitHub Actions.
 
 Flujo implementado:
 

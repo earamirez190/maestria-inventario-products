@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: maestria-inventario-products
-  namespace: default
+  namespace: actividad1
   labels:
     app: maestria-inventario-products
 spec:
@@ -15,26 +15,67 @@ spec:
       labels:
         app: maestria-inventario-products
     spec:
+      initContainers:
+        - name: wait-for-mysql
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              until nc -z mysql 3306; do
+                echo "Waiting for MySQL..."
+                sleep 2
+              done
       containers:
         - name: maestria-inventario-products
-          image: ghcr.io/earamirez190/maestria-inventario-products:latest
+          image: us-central1-docker.pkg.dev/mydemo-505323/actividad1-images/maestria-inventario-products:v1
           imagePullPolicy: Always
           ports:
-            - containerPort: 9090
+            - name: http
+              containerPort: 9090
           env:
             - name: SERVER_PORT
-              value: "9090"
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: SERVER_PORT
             - name: SPRING_DATASOURCE_URL
-              value: "jdbc:mysql://mysql:3306/maestria_inventario_products"
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: SPRING_DATASOURCE_URL
             - name: SPRING_DATASOURCE_USERNAME
-              value: "root"
+              valueFrom:
+                secretKeyRef:
+                  name: database-secret
+                  key: username
             - name: SPRING_DATASOURCE_PASSWORD
-              value: "root"
+              valueFrom:
+                secretKeyRef:
+                  name: database-secret
+                  key: password
             - name: SPRING_JPA_HIBERNATE_DDL_AUTO
-              value: "update"
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: SPRING_JPA_HIBERNATE_DDL_AUTO
+          readinessProbe:
+            tcpSocket:
+              port: 9090
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 6
+          livenessProbe:
+            tcpSocket:
+              port: 9090
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            timeoutSeconds: 2
+            failureThreshold: 3
           resources:
             requests:
-              cpu: "250m"
+              cpu: "200m"
               memory: "512Mi"
             limits:
               cpu: "500m"

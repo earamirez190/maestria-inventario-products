@@ -3,14 +3,21 @@ services:
     build: .
     container_name: inventario-products-app
     ports:
-      - "9090:9090"
+      - "9092:9090"
     environment:
       SERVER_PORT: 9090
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/maestria_inventario_products
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: root
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:9090/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   mysql:
     image: mysql:8.0
@@ -22,6 +29,11 @@ services:
       - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   sonarqube:
     image: sonarqube:latest
@@ -33,7 +45,8 @@ services:
       SONARQUBE_JDBC_USERNAME: sonar
       SONARQUBE_JDBC_PASSWORD: sonar
     depends_on:
-      - sonar_db
+      sonar_db:
+        condition: service_healthy
 
   sonar_db:
     image: postgres:15
@@ -44,16 +57,22 @@ services:
       POSTGRES_DB: sonar
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sonar -d sonar"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
     ports:
-      - "9091:9090"
+      - "9093:9090"
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
     depends_on:
-      - app
+      app:
+        condition: service_healthy
 
   grafana:
     image: grafana/grafana:latest
@@ -61,12 +80,15 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-      - GF_USERS_ALLOW_SIGN_UP=false
-      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-piechart-panel
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-piechart-panel
     volumes:
       - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
     depends_on:
       - prometheus
 

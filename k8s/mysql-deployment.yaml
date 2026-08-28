@@ -2,7 +2,9 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: mysql
-  namespace: default
+  namespace: actividad1
+  labels:
+    app: mysql
 spec:
   replicas: 1
   selector:
@@ -17,16 +19,57 @@ spec:
         - name: mysql
           image: mysql:8.0
           ports:
-            - containerPort: 3306
+            - name: mysql
+              containerPort: 3306
           env:
-            - name: MYSQL_ROOT_PASSWORD
-              value: "root"
             - name: MYSQL_DATABASE
               value: "maestria_inventario_products"
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: database-secret
+                  key: root-password
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: database-secret
+                  key: username
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: database-secret
+                  key: password
+          volumeMounts:
+            - name: mysql-data
+              mountPath: /var/lib/mysql
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - mysqladmin ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD"
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - mysqladmin ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD"
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
           resources:
             requests:
               cpu: "200m"
-              memory: "256Mi"
+              memory: "512Mi"
             limits:
               cpu: "500m"
-              memory: "512Mi"
+              memory: "1Gi"
+      volumes:
+        - name: mysql-data
+          persistentVolumeClaim:
+            claimName: mysql-data

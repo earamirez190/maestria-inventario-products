@@ -1,0 +1,111 @@
+name: CD AWS ECS Fargate
+
+on:
+  workflow_run:
+    workflows: ["CI DevSecOps"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  ECS_CLUSTER: ${{ vars.ECS_CLUSTER }}
+  ECS_SERVICE: ${{ vars.ECS_SERVICE }}
+  ECS_CONTAINER_NAME: ${{ vars.ECS_CONTAINER_NAME }}
+  DOCKERHUB_IMAGE: earamirez/maestria-inventario-products
+
+jobs:
+  deploy:
+    name: Build, push and deploy to ECS Fargate
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Resolve commit SHA
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            echo "IMAGE_TAG=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_ENV"
+          else
+            echo "IMAGE_TAG=${{ github.sha }}" >> "$GITHUB_ENV"
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to Docker Hub
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          echo "${DOCKERHUB_TOKEN}" | docker login \
+            --username "${DOCKERHUB_USERNAME}" \
+            --password-stdin
+
+      - name: Build and push image to Docker Hub
+        run: |
+          docker build \
+            -t "${DOCKERHUB_IMAGE}:${IMAGE_TAG}" \
+            -t "${DOCKERHUB_IMAGE}:latest" \
+            .
+          docker push "${DOCKERHUB_IMAGE}:${IMAGE_TAG}"
+          docker push "${DOCKERHUB_IMAGE}:latest"
+
+      - name: Update ECS task definition with the new image
+        run: |
+          TASK_DEFINITION_ARN="$(aws ecs describe-services \
+            --cluster "${ECS_CLUSTER}" \
+            --services "${ECS_SERVICE}" \
+            --query 'services[0].taskDefinition' \
+            --output text)"
+
+          if [ -z "${TASK_DEFINITION_ARN}" ] || [ "${TASK_DEFINITION_ARN}" = "None" ]; then
+            echo "Could not find the task definition for ECS service ${ECS_SERVICE}" >&2
+            exit 1
+          fi
+
+          CURRENT_TASK_DEFINITION="$(aws ecs describe-task-definition \
+            --task-definition "${TASK_DEFINITION_ARN}" \
+            --query taskDefinition \
+            --output json)"
+
+          if ! echo "${CURRENT_TASK_DEFINITION}" | jq -e \
+            --arg name "${ECS_CONTAINER_NAME}" \
+            'any(.containerDefinitions[]; .name == $name)' > /dev/null; then
+            echo "Container ${ECS_CONTAINER_NAME} was not found in the ECS task definition" >&2
+            exit 1
+          fi
+
+          UPDATED_TASK_DEFINITION="$(echo "${CURRENT_TASK_DEFINITION}" | jq \
+            --arg name "${ECS_CONTAINER_NAME}" \
+            --arg image "${DOCKERHUB_IMAGE}:${IMAGE_TAG}" \
+            'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
+             | .containerDefinitions |= map(if .name == $name then .image = $image else . end)')"
+
+          NEW_TASK_DEFINITION_ARN="$(aws ecs register-task-definition \
+            --cli-input-json "${UPDATED_TASK_DEFINITION}" \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)"
+
+          aws ecs update-service \
+            --cluster "${ECS_CLUSTER}" \
+            --service "${ECS_SERVICE}" \
+            --task-definition "${NEW_TASK_DEFINITION_ARN}" \
+            --force-new-deployment
+
+      - name: Wait for ECS service deployment
+        run: |
+          aws ecs wait services-stable \
+            --cluster "${ECS_CLUSTER}" \
+            --services "${ECS_SERVICE}"

@@ -1,6 +1,7 @@
 services:
   app:
     build: .
+    image: earamirez/maestria-inventario-products:latest
     container_name: inventario-products-app
     ports:
       - "9092:9090"

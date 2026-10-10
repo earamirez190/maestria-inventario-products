@@ -14,13 +14,43 @@
 - Ramas principales: `develop`, `laboratory`, `main`.
 - CI y DevSecOps: `.github/workflows/ci.yml`.
 - El pipeline ejecuta pruebas con MySQL, construye el JAR, construye la imagen Docker y ejecuta Trivy.
-- Esta entrega no despliega en Kubernetes, AWS ni Azure.
+- Despliegue en GCP: `.github/workflows/deploy.yaml` publica la imagen en Artifact Registry y actualiza GKE.
+- Despliegue en AWS: `.github/workflows/deploy-aws.yaml` publica la imagen en ECR y actualiza un servicio ECS Fargate existente.
 
 ## Docker
 
 - `Dockerfile`: construye la aplicacion Spring Boot con Java 21.
 - `docker-compose.yml`: levanta la aplicacion, MySQL, Prometheus y Grafana para pruebas locales.
-- No se publica imagen en DockerHub ni se despliega en un cluster.
+- Los workflows publican la misma imagen construida desde el Dockerfile a los registros de cada proveedor.
+
+### Publicar la imagen de la aplicacion en Docker Hub
+
+El servicio `app` de Docker Compose usa la imagen `earamirez/maestria-inventario-products:latest`. Para construirla y publicarla, inicia sesion en Docker Hub y ejecuta:
+
+```powershell
+docker login
+docker compose build app
+docker compose push app
+```
+
+Esto publica unicamente la imagen de la aplicacion; MySQL, Prometheus, Grafana y SonarQube son imagenes independientes de terceros.
+
+### Despliegue AWS ECS Fargate
+
+El workflow de AWS requiere que el cluster y servicio ECS Fargate, la definición inicial de tarea y la base de datos ya existan. Construye la imagen desde el `Dockerfile`, la publica en el repositorio Docker Hub público `earamirez/maestria-inventario-products` y actualiza el servicio ECS con la etiqueta SHA del commit. No requiere un repositorio ECR.
+
+| Variable | Valor |
+| --- | --- |
+| `AWS_REGION` | Región AWS donde están los recursos |
+| `ECS_CLUSTER` | Nombre del cluster ECS |
+| `ECS_SERVICE` | Nombre del servicio ECS Fargate |
+| `ECS_CONTAINER_NAME` | Nombre del contenedor de la aplicación en la definición de tarea |
+
+Agrega estos secretos del repositorio GitHub: `AWS_ROLE_TO_ASSUME` con el ARN del rol IAM que confía en GitHub Actions mediante OIDC, `DOCKERHUB_USERNAME` con el usuario de Docker Hub y `DOCKERHUB_TOKEN` con un access token de Docker Hub (no la contraseña de la cuenta). El rol IAM necesita permisos para describir y registrar definiciones de tarea, actualizar y consultar el servicio ECS, y pasar los roles de ejecución/tarea ECS (`iam:PassRole`); ya no requiere permisos para publicar en ECR.
+
+La definición inicial de tarea debe usar Fargate, plataforma Linux x86_64, y exponer el puerto `9090` del contenedor. Configura la URL JDBC, usuario y contraseña de la base de datos en la definición de tarea; almacena credenciales en AWS Secrets Manager y referencia esos secretos desde ECS, no en el repositorio. El servicio Fargate y RDS deben tener conectividad de red entre sí y grupos de seguridad que permitan el puerto de MySQL desde las tareas.
+
+Al completarse correctamente el workflow `CI DevSecOps` en `main`, el workflow de AWS crea las etiquetas `latest` y SHA del commit en ECR, actualiza la imagen del contenedor en la definición de tarea y espera a que el servicio ECS quede estable. También puede iniciarse manualmente desde GitHub Actions.
 
 ### Monitoreo con Prometheus y Grafana
 - `Prometheus`: Configurado mediante prometheus.yml para realizar scraping de las métricas expuestas por Spring Boot Actuator, disponible en `http://localhost:9091`.

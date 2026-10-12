@@ -20,7 +20,7 @@
 ## Docker
 
 - `Dockerfile`: construye la aplicacion Spring Boot con Java 21.
-- `docker-compose.yml`: levanta la aplicacion, MySQL, Prometheus y Grafana para pruebas locales.
+- `docker-compose.yml`: levanta la aplicación, MySQL, Prometheus, Grafana y el stack local de observabilidad.
 - Los workflows publican la misma imagen construida desde el Dockerfile a los registros de cada proveedor.
 
 ### Publicar la imagen de la aplicacion en Docker Hub
@@ -50,14 +50,33 @@ Agrega estos secretos del repositorio GitHub: `AWS_ROLE_TO_ASSUME` con el ARN de
 
 La definición inicial de tarea debe usar Fargate, plataforma Linux x86_64, y exponer el puerto `9090` del contenedor. Configura la URL JDBC, usuario y contraseña de la base de datos en la definición de tarea; almacena credenciales en AWS Secrets Manager y referencia esos secretos desde ECS, no en el repositorio. El servicio Fargate y RDS deben tener conectividad de red entre sí y grupos de seguridad que permitan el puerto de MySQL desde las tareas.
 
-Al completarse correctamente el workflow `CI DevSecOps` en `main`, el workflow de AWS crea las etiquetas `latest` y SHA del commit en ECR, actualiza la imagen del contenedor en la definición de tarea y espera a que el servicio ECS quede estable. También puede iniciarse manualmente desde GitHub Actions.
+Al completarse correctamente el workflow `CI DevSecOps` en `main`, el workflow de AWS crea las etiquetas `latest` y SHA del commit en Docker Hub, actualiza la imagen del contenedor en la definición de tarea y espera a que el servicio ECS quede estable. También puede iniciarse manualmente desde GitHub Actions.
 
 ### Monitoreo con Prometheus y Grafana
-- `Prometheus`: Configurado mediante prometheus.yml para realizar scraping de las métricas expuestas por Spring Boot Actuator, disponible en `http://localhost:9091`.
-- `Grafana`: Incluye un tablero preconfigurado (dashboard.json) para visualizar el estado, la memoria, el tráfico HTTP y la salud general de la API, disponible en `http://localhost:3000` con usuario `admin` y contraseña `admin`.
-- `Uso con Docker` Compose: Se puede levantar el entorno de monitoreo ejecutando docker-compose up -d.
+- `Prometheus`: Configurado mediante `prometheus.yml` para realizar scraping de las métricas expuestas por Spring Boot Actuator, disponible en `http://localhost:9093`.
+- `Grafana`: Incluye un tablero preconfigurado para visualizar el estado, la memoria, el tráfico HTTP y la salud general de la API, disponible en `http://localhost:3002` con usuario `admin` y contraseña `admin`. También tiene las fuentes Loki y Jaeger provisionadas para correlacionar logs y trazas.
+- `MySQL`: El puerto externo local es `3310`; dentro de Docker Compose la aplicación continúa conectándose a `mysql:3306`.
+- `SonarQube`: Disponible en `http://localhost:9001`.
+- `Uso con Docker Compose`: Se puede levantar el entorno ejecutando `docker compose up -d --build`.
 
-- La aplicación expone métricas de Spring Boot en `http://localhost:9090/actuator/prometheus`.
+- La aplicación expone su API y métricas en `http://localhost:9092` y `http://localhost:9092/actuator/prometheus`.
+
+### Observabilidad OpenTelemetry local
+
+- La aplicación usa el starter de OpenTelemetry para instrumentación automática de Spring Web, JDBC, métricas y logs, además de spans de negocio `products.save` y `products.list`.
+- Los logs se emiten como JSON y conservan `trace_id` y `span_id` tanto en la salida de la aplicación como en Loki.
+- El Collector recibe OTLP por gRPC en `localhost:4317` y HTTP/protobuf en `localhost:4318`; expone sus métricas Prometheus en `localhost:9464` y su healthcheck en `localhost:13133`.
+- `Jaeger`: UI en `http://localhost:16686`.
+- `Loki`: readiness/API en `http://localhost:3100`.
+- Configuración versionada: `observability/otel-collector-config.yaml`, `observability/loki-config.yaml` y `grafana/provisioning/datasources/datasource.yml`.
+
+Para generar una traza local y verla en Jaeger/Grafana:
+
+```powershell
+$body = @{ name = 'OTel demo'; quantity = 10; price = 25.0 } | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri http://localhost:9092/api/products `
+  -ContentType 'application/json' -Body $body
+```
 
 ## Calidad y Seguridad (DevSecOps)
 - `SonarQube`: Análisis estático de código para medir deuda técnica, cobertura y code smells (configurado en sonar-project.properties).

@@ -10,9 +10,19 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/maestria_inventario_products
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: root
+      OTEL_SERVICE_NAME: maestria-inventario-products
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: otlp
+      OTEL_LOGS_EXPORTER: otlp
+      OTEL_INSTRUMENTATION_MICROMETER_ENABLED: "true"
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment=local,service.namespace=maestria
     depends_on:
       mysql:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://localhost:9090/actuator/health || exit 1"]
       interval: 15s
@@ -27,7 +37,9 @@ services:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: maestria_inventario_products
     ports:
-      - "3307:3306"
+      # 3307 is already used by another local stack on this workstation.
+      # The application still reaches MySQL through the service name on 3306.
+      - "3310:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
@@ -74,17 +86,53 @@ services:
     depends_on:
       app:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
+
+  jaeger:
+    image: cr.jaegertracing.io/jaegertracing/jaeger:2.22.0
+    container_name: jaeger
+    ports:
+      - "16686:16686"
+
+  loki:
+    image: grafana/loki:3.7.0
+    container_name: loki
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./observability/loki-config.yaml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.162.0
+    container_name: otel-collector
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+      - "9464:9464"
+      - "13133:13133"
+    volumes:
+      - ./observability/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml:ro
+    depends_on:
+      jaeger:
+        condition: service_started
+      loki:
+        condition: service_started
 
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
     ports:
-      - "3000:3000"
+      # 3000 is already used by another local stack on this workstation.
+      - "3002:3000"
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin
       GF_USERS_ALLOW_SIGN_UP: "false"
-      GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-piechart-panel
+      GF_INSTALL_PLUGINS: grafana-clock-panel
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
@@ -92,8 +140,11 @@ services:
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
     depends_on:
       - prometheus
+      - jaeger
+      - loki
 
 volumes:
   mysql_data:
   postgres_data:
   grafana_data:
+  loki_data:

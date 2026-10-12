@@ -54,7 +54,7 @@ Al completarse correctamente el workflow `CI DevSecOps` en `main`, el workflow d
 
 ### Monitoreo con Prometheus y Grafana
 - `Prometheus`: Configurado mediante `prometheus.yml` para realizar scraping de las métricas expuestas por Spring Boot Actuator, disponible en `http://localhost:9093`.
-- `Grafana`: Incluye un tablero preconfigurado para visualizar el estado, la memoria, el tráfico HTTP y la salud general de la API, disponible en `http://localhost:3002` con usuario `admin` y contraseña `admin`. También tiene las fuentes Loki y Jaeger provisionadas para correlacionar logs y trazas.
+- `Grafana`: Incluye el tablero `Inventario · Observabilidad E2E` con seis paneles: throughput, errores 5xx, latencia promedio, disponibilidad 2xx, CPU por microservicio y errores del Collector. Está disponible en `http://localhost:3002` con usuario `admin` y contraseña `admin`. También tiene las fuentes Loki y Jaeger provisionadas para correlacionar logs y trazas.
 - `MySQL`: El puerto externo local es `3310`; dentro de Docker Compose la aplicación continúa conectándose a `mysql:3306`.
 - `SonarQube`: Disponible en `http://localhost:9001`.
 - `Uso con Docker Compose`: Se puede levantar el entorno ejecutando `docker compose up -d --build`.
@@ -68,7 +68,7 @@ Al completarse correctamente el workflow `CI DevSecOps` en `main`, el workflow d
 - La arquitectura local es `service-a (products) -> service-b (audit) -> MySQL`; al crear un producto, A llama a B por HTTP y B persiste el evento en `product_audit_events`.
 - La propagación W3C conserva el mismo `trace_id` entre ambos servicios, sus spans HTTP/JDBC y sus logs.
 - Los logs se emiten como JSON y conservan `trace_id` y `span_id` tanto en la salida de la aplicación como en Loki.
-- El Collector recibe OTLP por gRPC en `localhost:4317` y HTTP/protobuf en `localhost:4318`; expone sus métricas Prometheus en `localhost:9464` y su healthcheck en `localhost:13133`.
+- El Collector recibe OTLP por gRPC en `localhost:4317` y HTTP/protobuf en `localhost:4318`; expone las métricas de la aplicación en `localhost:9464`, sus métricas internas en `localhost:8888` y su healthcheck en `localhost:13133`.
 - `Jaeger`: UI en `http://localhost:16686`.
 - `Loki`: readiness/API en `http://localhost:3100`.
 - Configuración versionada: `observability/otel-collector-config.yaml`, `observability/loki-config.yaml` y `grafana/provisioning/datasources/datasource.yml`.
@@ -80,6 +80,18 @@ $body = @{ name = 'OTel demo'; quantity = 10; price = 25.0 } | ConvertTo-Json
 Invoke-RestMethod -Method Post -Uri http://localhost:9092/api/products `
   -ContentType 'application/json' -Body $body
 ```
+
+### Benchmark de overhead OTel
+
+El benchmark reproducible usa k6 con 50 usuarios concurrentes por un minuto y compara dos ejecuciones del mismo flujo `POST /api/products`: una con el SDK OTel deshabilitado y otra con OTel habilitado. Durante cada ejecución captura p50, p95, p99, tasa de error, CPU y memoria de `service-a` y `service-b`.
+
+Requiere tener k6 instalado y el stack local levantado. Para ejecutarlo:
+
+```powershell
+.\benchmark\run-benchmark.ps1
+```
+
+Los resultados quedan en `benchmark/results/summary.csv` y `benchmark/results/summary.json` (la carpeta está ignorada por Git). Se pueden usar parámetros más cortos para una validación rápida, por ejemplo `.\benchmark\run-benchmark.ps1 -Vus 10 -Duration 30s`.
 
 ## Calidad y Seguridad (DevSecOps)
 - `SonarQube`: Análisis estático de código para medir deuda técnica, cobertura y code smells (configurado en sonar-project.properties).

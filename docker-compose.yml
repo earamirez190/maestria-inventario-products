@@ -16,6 +16,7 @@ services:
       OTEL_TRACES_EXPORTER: otlp
       OTEL_METRICS_EXPORTER: otlp
       OTEL_LOGS_EXPORTER: otlp
+      OTEL_SDK_DISABLED: ${OTEL_SDK_DISABLED:-false}
       OTEL_INSTRUMENTATION_MICROMETER_ENABLED: "true"
       OTEL_RESOURCE_ATTRIBUTES: deployment.environment=local,service.namespace=maestria
       PRODUCT_AUDIT_ENABLED: "true"
@@ -54,6 +55,7 @@ services:
       OTEL_TRACES_EXPORTER: otlp
       OTEL_METRICS_EXPORTER: otlp
       OTEL_LOGS_EXPORTER: otlp
+      OTEL_SDK_DISABLED: ${OTEL_SDK_DISABLED:-false}
       OTEL_INSTRUMENTATION_MICROMETER_ENABLED: "true"
       OTEL_RESOURCE_ATTRIBUTES: deployment.environment=local,service.namespace=maestria
     depends_on:
@@ -151,6 +153,7 @@ services:
       - "4317:4317"
       - "4318:4318"
       - "9464:9464"
+      - "8888:8888"
       - "13133:13133"
     volumes:
       - ./observability/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml:ro

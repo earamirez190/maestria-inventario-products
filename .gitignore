@@ -35,3 +35,6 @@ out/
 
 ### VS Code ###
 .vscode/
+
+# Resultados locales de benchmark (los scripts sí se versionan)
+benchmark/results/

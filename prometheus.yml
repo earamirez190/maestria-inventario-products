@@ -15,3 +15,10 @@ scrape_configs:
       - targets: ['otel-collector:9464']
         labels:
           app: 'otel-collector'
+
+  - job_name: 'spring-boot-audit-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['service-b:9090']
+        labels:
+          app: 'maestria-inventario-audit'

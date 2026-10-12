@@ -18,6 +18,44 @@ services:
       OTEL_LOGS_EXPORTER: otlp
       OTEL_INSTRUMENTATION_MICROMETER_ENABLED: "true"
       OTEL_RESOURCE_ATTRIBUTES: deployment.environment=local,service.namespace=maestria
+      PRODUCT_AUDIT_ENABLED: "true"
+      PRODUCT_AUDIT_URL: http://service-b:9090
+    depends_on:
+      mysql:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+      service-b:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:9090/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  service-b:
+    build:
+      context: .
+      dockerfile: services/service-b/Dockerfile
+    image: earamirez/maestria-inventario-audit:local
+    container_name: inventario-audit-service
+    ports:
+      # 9091 is already used by another local stack on this workstation.
+      - "9094:9090"
+    environment:
+      SERVER_PORT: 9090
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/maestria_inventario_products
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+      OTEL_SERVICE_NAME: maestria-inventario-audit
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: otlp
+      OTEL_LOGS_EXPORTER: otlp
+      OTEL_INSTRUMENTATION_MICROMETER_ENABLED: "true"
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment=local,service.namespace=maestria
     depends_on:
       mysql:
         condition: service_healthy

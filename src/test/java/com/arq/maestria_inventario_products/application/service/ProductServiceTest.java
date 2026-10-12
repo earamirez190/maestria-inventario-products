@@ -3,6 +3,7 @@ package com.arq.maestria_inventario_products.application.service;
 import com.arq.maestria_inventario_products.domain.model.Product;
 import com.arq.maestria_inventario_products.domain.repository.ProductRepository;
 import com.arq.maestria_inventario_products.service.ProductService;
+import com.arq.maestria_inventario_products.service.ProductAuditClient;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,12 +15,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class ProductServiceTest {
 
     private ProductRepository productRepository;
+    private ProductAuditClient productAuditClient;
     private ProductService productService;
 
     @BeforeEach
     void setUp() {
         productRepository = Mockito.mock(ProductRepository.class);
-        productService = new ProductService(productRepository);
+        productAuditClient = Mockito.mock(ProductAuditClient.class);
+        productService = new ProductService(productRepository, productAuditClient);
     }
 
     @Test

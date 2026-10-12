@@ -58,12 +58,15 @@ Al completarse correctamente el workflow `CI DevSecOps` en `main`, el workflow d
 - `MySQL`: El puerto externo local es `3310`; dentro de Docker Compose la aplicación continúa conectándose a `mysql:3306`.
 - `SonarQube`: Disponible en `http://localhost:9001`.
 - `Uso con Docker Compose`: Se puede levantar el entorno ejecutando `docker compose up -d --build`.
+- `service-b` (auditoría): disponible en `http://localhost:9094`; dentro de Docker el servicio A lo invoca como `http://service-b:9090`.
 
 - La aplicación expone su API y métricas en `http://localhost:9092` y `http://localhost:9092/actuator/prometheus`.
 
 ### Observabilidad OpenTelemetry local
 
 - La aplicación usa el starter de OpenTelemetry para instrumentación automática de Spring Web, JDBC, métricas y logs, además de spans de negocio `products.save` y `products.list`.
+- La arquitectura local es `service-a (products) -> service-b (audit) -> MySQL`; al crear un producto, A llama a B por HTTP y B persiste el evento en `product_audit_events`.
+- La propagación W3C conserva el mismo `trace_id` entre ambos servicios, sus spans HTTP/JDBC y sus logs.
 - Los logs se emiten como JSON y conservan `trace_id` y `span_id` tanto en la salida de la aplicación como en Loki.
 - El Collector recibe OTLP por gRPC en `localhost:4317` y HTTP/protobuf en `localhost:4318`; expone sus métricas Prometheus en `localhost:9464` y su healthcheck en `localhost:13133`.
 - `Jaeger`: UI en `http://localhost:16686`.

@@ -16,10 +16,11 @@ public class ProductService {
     private static final Logger log = LoggerFactory.getLogger(ProductService.class);
 
     private final ProductRepository repository;
+    private final ProductAuditClient auditClient;
 
-
-    public ProductService(ProductRepository repository) {
+    public ProductService(ProductRepository repository, ProductAuditClient auditClient) {
         this.repository = repository;
+        this.auditClient = auditClient;
     }
 
     @WithSpan("products.save")
@@ -35,6 +36,7 @@ public class ProductService {
         Product savedProduct = repository.save(product);
         log.info("Product saved: id={}, name={}, quantity={}",
                 savedProduct.getId(), savedProduct.getName(), savedProduct.getQuantity());
+        auditClient.auditProductSaved(savedProduct);
         return savedProduct;
     }
 

@@ -1,0 +1,10 @@
+# OpenTelemetry SDK bootstrap / example configuration
+
+# Este archivo contiene ejemplos y recomendaciones para configurar el SDK en cada servicio.
+# Recomendación mínima de variables de entorno (exportar en container/pod):
+# OTEL_SERVICE_NAME=data-service
+# OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+# OTEL_TRACES_SAMPLER=parentbased_always_on
+# OTEL_METRICS_EXPORTER=otlp
+
+# Ejemplo de config para collector (usar observability/collector/otel-collector-config.yaml)

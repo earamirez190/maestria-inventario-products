@@ -1,0 +1,21 @@
+# Plantilla de regla de alerta (Prometheus Alertmanager style / ejemplo genérico)
+# Regla AIOps (plantilla):
+# Condición: error_rate > baseline + 2 * sigma AND latency_p99 > SLO_threshold
+# En sistemas cloud (GCP/AWS) se recomienda implementar esta lógica con Cloud Monitoring anomaly detection o DevOps Guru.
+
+groups:
+- name: aiops-rules
+  rules:
+  - alert: DataService_Anomalous_ErrorRate_And_Latency
+    expr: |
+      (
+        (increase(http_requests_total{job="data-service",code!~"2.."}[5m]) / increase(http_requests_total{job="data-service"}[5m])) > (baseline_error_rate + 2 * baseline_stddev)
+      ) and (
+        histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job="data-service"}[5m])) by (le)) > SLO_LATENCY_THRESHOLD
+      )
+    for: 2m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Anomalous error rate and high p99 latency in data-service"
+      description: "error_rate > baseline + 2σ AND latency_p99 > SLO threshold. Enriquecer alerta con trace_id si está disponible."

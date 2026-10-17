@@ -1,0 +1,10 @@
+{
+  "dashboard": {
+    "title": "Golden Signals - Seguridad",
+    "panels": [
+      {"type": "stat", "title": "Auth Failures", "targets": [{"expr": "sum(rate(auth_failures_total[5m]))"}]},
+      {"type": "graph", "title": "Traffic N-S/E-W", "targets": [{"expr": "sum(rate(network_bytes_total[5m])) by (direction, service)"}]},
+      {"type": "table", "title": "CVEs activos", "targets": [{"expr": "cve_active_count"}]}
+    ]
+  }
+}

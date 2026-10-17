@@ -1,0 +1,30 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+
+processors:
+  batch:
+  memory_limiter:
+
+exporters:
+  logging:
+    logLevel: debug
+  otlp:
+    endpoint: "localhost:4318"
+    tls:
+      insecure: true
+  prometheus:
+    endpoint: :8888
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [logging, otlp]
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [prometheus]

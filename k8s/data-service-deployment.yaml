@@ -20,7 +20,7 @@ spec:
       serviceAccountName: data-service
       containers:
         - name: data-service
-          image: us-central1-docker.pkg.dev/proyect-otel-final-512002/actividad1-images/data-service:lab-integrador
+          image: us-central1-docker.pkg.dev/mydemo-505323/actividad1-images/data-service:lab-integrador
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -65,7 +65,7 @@ spec:
           args:
             - "--structured-logs"
             - "--port=3306"
-            - "proyect-otel-final-512002:us-central1:inventory-cloudsql"
+            - "mydemo-505323:us-central1:inventory-cloudsql"
           securityContext:
             runAsNonRoot: true
           resources:

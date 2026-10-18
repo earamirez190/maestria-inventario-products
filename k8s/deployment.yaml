@@ -28,7 +28,7 @@ spec:
               done
       containers:
         - name: maestria-inventario-products
-          image: us-central1-docker.pkg.dev/proyect-otel-final-512002/actividad1-images/maestria-inventario-products:lab-integrador
+          image: us-central1-docker.pkg.dev/mydemo-505323/actividad1-images/maestria-inventario-products:lab-integrador
           imagePullPolicy: Always
           ports:
             - name: http

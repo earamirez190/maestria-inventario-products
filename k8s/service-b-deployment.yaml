@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: service-b
-          image: us-central1-docker.pkg.dev/proyect-otel-final-512002/actividad1-images/service-b:lab-integrador
+          image: us-central1-docker.pkg.dev/mydemo-505323/actividad1-images/service-b:lab-integrador
           imagePullPolicy: Always
           ports:
             - name: http

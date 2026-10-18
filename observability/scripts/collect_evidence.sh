@@ -36,27 +36,23 @@ else
   echo "WARNING: app health endpoint not reachable at http://localhost:9092/health" >&2
 fi
 
-if curl -sS http://localhost:8000/health -o /dev/null; then
-  curl -sS http://localhost:8000/health | jq . > "$LOCAL_DIR/data_service_health_$TS.json" || true
+if curl -sS http://localhost:8002/health -o /dev/null; then
+  curl -sS http://localhost:8002/health | jq . > "$LOCAL_DIR/data_service_health_$TS.json" || true
 else
-  echo "WARNING: data-service health endpoint not reachable at http://localhost:8000/health" >&2
+  echo "WARNING: data-service health endpoint not reachable at http://localhost:8002/health" >&2
 fi
 
 # 2) API call that includes trace_id
 echo "- Calling data-service /data/products"
 DATA_PRODUCTS_OUT="$LOCAL_DIR/data_products_$TS.json"
-if curl -sS "http://localhost:8000/data/products" -o "$DATA_PRODUCTS_OUT"; then
+if curl -sS "http://localhost:9092/api/observability/data/products" -o "$DATA_PRODUCTS_OUT"; then
   echo "Saved $DATA_PRODUCTS_OUT"
   TRACE_ID=$(jq -r '.trace_id // empty' "$DATA_PRODUCTS_OUT" || true)
   if [ -n "$TRACE_ID" ]; then
     echo "$TRACE_ID" > "$LOCAL_DIR/trace_id_$TS.txt"
     echo "Found trace_id: $TRACE_ID"
     # Try to fetch Jaeger trace (if available)
-    if curl -sS "http://localhost:16686/api/traces/$TRACE_ID" -o /dev/null 2>/dev/null; then
-      curl -sS "http://localhost:16686/api/traces/$TRACE_ID" | jq . > "$LOCAL_DIR/jaeger_trace_${TRACE_ID}_$TS.json" || true
-    else
-      echo "Jaeger not reachable at http://localhost:16686 (skipping)" >&2
-    fi
+    echo "http://localhost:16686/trace/$TRACE_ID" > "$LOCAL_DIR/jaeger_trace_link_$TS.txt"
   else
     echo "No trace_id found in API response" >&2
   fi
@@ -77,10 +73,10 @@ fi
 # 4) Grafana export (Golden Signals)
 echo "- Exporting Grafana dashboard (Golden Signals) if available"
 if [ -n "${GRAFANA_USER-}" ] && [ -n "${GRAFANA_PASS-}" ]; then
-  DASH_SEARCH=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASS" "http://localhost:3000/api/search?query=Golden%20Signals" || true)
+  DASH_SEARCH=$(curl -s -u "$GRAFANA_USER:$GRAFANA_PASS" "http://localhost:3002/api/search?query=Golden%20Signals" || true)
   DASH_UID=$(echo "$DASH_SEARCH" | jq -r '.[0].uid // empty' || true)
   if [ -n "$DASH_UID" ]; then
-    curl -s -u "$GRAFANA_USER:$GRAFANA_PASS" "http://localhost:3000/api/dashboards/uid/$DASH_UID" | jq . > "$LOCAL_DIR/grafana_golden_signals_$TS.json" || true
+    curl -s -u "$GRAFANA_USER:$GRAFANA_PASS" "http://localhost:3002/api/dashboards/uid/$DASH_UID" | jq . > "$LOCAL_DIR/grafana_golden_signals_$TS.json" || true
     echo "Saved Grafana dashboard to $LOCAL_DIR/grafana_golden_signals_$TS.json"
   else
     echo "Golden Signals dashboard not found in Grafana (search returned empty)" >&2

@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: service-b
+  namespace: actividad1
+  labels:
+    app: service-b
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: service-b
+  template:
+    metadata:
+      labels:
+        app: service-b
+    spec:
+      containers:
+        - name: service-b
+          image: us-central1-docker.pkg.dev/proyect-otel-final-512002/actividad1-images/service-b:lab-integrador
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 9090
+          env:
+            - name: SERVER_PORT
+              value: "9090"
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:mysql://mysql:3306/maestria_inventario_products?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: database-secret
+                  key: username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: database-secret
+                  key: password
+            - name: DATA_SERVICE_URL
+              value: http://data-service:8002
+            - name: OTEL_SERVICE_NAME
+              value: maestria-inventario-audit
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector.actividad1.svc.cluster.local:4318
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: http/protobuf
+            - name: OTEL_TRACES_EXPORTER
+              value: otlp
+            - name: OTEL_METRICS_EXPORTER
+              value: otlp
+            - name: OTEL_LOGS_EXPORTER
+              value: otlp
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: deployment.environment=gcp,service.namespace=maestria
+            - name: CHAOS_LATENCY_MS
+              value: "0"
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 45
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

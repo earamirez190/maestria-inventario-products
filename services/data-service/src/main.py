@@ -4,6 +4,8 @@ import time
 import random
 import json
 import psycopg2
+import mysql.connector
+from urllib.parse import urlparse
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from pythonjsonlogger import jsonlogger
@@ -29,7 +31,9 @@ ENV             = os.getenv("ENVIRONMENT", "production")
 # DB según cloud provider
 # GCP Cloud SQL: postgresql://user:pass@/dbname?host=/cloudsql/project:region:instance
 # AWS RDS:       postgresql://user:pass@rds-endpoint:5432/dbname
-DB_DSN = os.getenv("DATABASE_URL", "postgresql://app:secret@postgres:5432/appdb")
+DB_DSN = os.getenv("DATABASE_URL", "postgresql://app:app@postgres:5432/data_service")
+DATABASE_PROVIDER = os.getenv("DATABASE_PROVIDER", "postgres-local")
+DATABASE_SYSTEM = "mysql" if DB_DSN.lower().startswith("mysql") else "postgresql"
 
 # ── OTel Resource ──────────────────────────────────────────────────
 resource = Resource.create({
@@ -38,8 +42,8 @@ resource = Resource.create({
     "deployment.environment": ENV,
     "cloud.provider": CLOUD_PROVIDER,
     # GCP Cloud SQL o AWS RDS según el provider
-    "db.system": "postgresql",
-    "db.provider": "cloud-sql" if CLOUD_PROVIDER == "gcp" else "rds",
+    "db.system": DATABASE_SYSTEM,
+    "db.provider": DATABASE_PROVIDER,
 })
 
 # ── TracerProvider ─────────────────────────────────────────────────
@@ -85,6 +89,11 @@ data_requests_total = meter.create_counter(
     description="Total requests al data-service",
     unit="1",
 )
+data_errors_total = meter.create_counter(
+    "data_errors_total",
+    description="Total de errores HTTP del data-service",
+    unit="1",
+)
 
 # ── Logging estructurado ───────────────────────────────────────────
 class OtelJsonFormatter(jsonlogger.JsonFormatter):
@@ -110,6 +119,15 @@ Psycopg2Instrumentor().instrument(tracer_provider=tracer_provider)
 # ── DB helpers ─────────────────────────────────────────────────────
 def get_connection():
     """Conecta a Cloud SQL (GCP) o RDS (AWS) según CLOUD_PROVIDER."""
+    if DATABASE_SYSTEM == "mysql":
+        parsed = urlparse(DB_DSN)
+        return mysql.connector.connect(
+            host=parsed.hostname or "127.0.0.1",
+            port=parsed.port or 3306,
+            user=parsed.username,
+            password=parsed.password,
+            database=parsed.path.lstrip("/"),
+        )
     return psycopg2.connect(DB_DSN)
 
 # ── Chaos flags (Módulo D) ─────────────────────────────────────────
@@ -123,6 +141,7 @@ def apply_chaos():
         logger.warning("Chaos: latencia inyectada", extra={"latency_ms": CHAOS_LATENCY_MS})
 
     if CHAOS_ERROR_RATE > 0 and random.random() < CHAOS_ERROR_RATE:
+        data_errors_total.add(1, {"endpoint": "/data/products", "cloud": CLOUD_PROVIDER})
         logger.error("Chaos: error inyectado", extra={"error_rate": CHAOS_ERROR_RATE})
         raise HTTPException(status_code=500, detail="Chaos: error inyectado deliberadamente")
 
@@ -173,7 +192,7 @@ async def get_products(category: str = "all"):
         kind=trace.SpanKind.CLIENT,
         attributes={
             # ── OTel DB Semantic Conventions ─────────────────────
-            "db.system":      "postgresql",
+            "db.system":      DATABASE_SYSTEM,
             "db.name":        "appdb",
             "db.operation":   "SELECT",
             "db.sql.table":   "products",
@@ -208,7 +227,7 @@ async def get_products(category: str = "all"):
                 "operation":  "SELECT",
                 "table":      "products",
                 "cloud":      CLOUD_PROVIDER,
-                "db.provider": "cloud-sql" if CLOUD_PROVIDER == "gcp" else "rds",
+                "db.provider": DATABASE_PROVIDER,
             })
 
             span.set_attribute("db.rows_returned", len(rows))
@@ -227,11 +246,12 @@ async def get_products(category: str = "all"):
                                    "price": float(r[3]), "stock": r[4]} for r in rows],
                 "count":         len(rows),
                 "cloud_provider": CLOUD_PROVIDER,
-                "db_provider":   "Cloud SQL" if CLOUD_PROVIDER == "gcp" else "RDS",
+                "db_provider":   DATABASE_PROVIDER,
                 "trace_id":      format(trace.get_current_span().get_span_context().trace_id, "032x"),
             }
 
         except HTTPException:
+            data_errors_total.add(1, {"endpoint": "/data/products", "cloud": CLOUD_PROVIDER})
             raise
         except Exception as e:
             db_errors_total.add(1, {"operation": "SELECT", "cloud": CLOUD_PROVIDER})

@@ -1,21 +1,72 @@
-# Plantilla de regla de alerta (Prometheus Alertmanager style / ejemplo genérico)
-# Regla AIOps (plantilla):
-# Condición: error_rate > baseline + 2 * sigma AND latency_p99 > SLO_threshold
-# En sistemas cloud (GCP/AWS) se recomienda implementar esta lógica con Cloud Monitoring anomaly detection o DevOps Guru.
+# Reglas Prometheus para la correlación AIOps del módulo B.
+# En GCP, estas expresiones se trasladan a Cloud Monitoring/MQL.
 
 groups:
-- name: aiops-rules
-  rules:
-  - alert: DataService_Anomalous_ErrorRate_And_Latency
-    expr: |
-      (
-        (increase(http_requests_total{job="data-service",code!~"2.."}[5m]) / increase(http_requests_total{job="data-service"}[5m])) > (baseline_error_rate + 2 * baseline_stddev)
-      ) and (
-        histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job="data-service"}[5m])) by (le)) > SLO_LATENCY_THRESHOLD
-      )
-    for: 2m
-    labels:
-      severity: critical
-    annotations:
-      summary: "Anomalous error rate and high p99 latency in data-service"
-      description: "error_rate > baseline + 2σ AND latency_p99 > SLO threshold. Enriquecer alerta con trace_id si está disponible."
+  - name: data-service-recordings
+    interval: 15s
+    rules:
+      - record: data_service:requests_per_second:rate5m
+        expr: sum(rate(data_requests_total{job="maestria/data-service"}[5m]))
+
+      - record: data_service:errors_per_second:rate5m
+        expr: sum(rate(data_errors_total{job="maestria/data-service"}[5m]))
+
+      - record: data_service:error_rate:ratio5m
+        expr: |
+          data_service:errors_per_second:rate5m
+          /
+          clamp_min(data_service:requests_per_second:rate5m, 0.001)
+
+      - record: data_service:error_rate:baseline1h
+        expr: avg_over_time(data_service:error_rate:ratio5m[1h])
+
+      - record: data_service:error_rate:stddev1h
+        expr: stddev_over_time(data_service:error_rate:ratio5m[1h])
+
+      - record: data_service:db_latency_p99:5m
+        expr: |
+          histogram_quantile(
+            0.99,
+            sum(rate(db_query_duration_seconds_bucket{job="maestria/data-service"}[5m])) by (le)
+          )
+
+  - name: data-service-alerts
+    interval: 15s
+    rules:
+      - alert: DataService_AnomalousErrorRateAndLatency
+        expr: |
+          data_service:error_rate:ratio5m
+            > data_service:error_rate:baseline1h + (2 * data_service:error_rate:stddev1h)
+          and data_service:db_latency_p99:5m > 0.2
+        for: 1m
+        labels:
+          severity: critical
+          slo: data-service
+          detection: baseline-plus-2sigma
+        annotations:
+          summary: "Error rate anómalo y p99 elevado en data-service"
+          description: "La tasa de error supera baseline + 2σ y el p99 de DB supera 200 ms."
+          runbook: "Revisar trace_id del request fallido en logs/Loki y abrir la traza en Jaeger."
+          trace_search: "http://localhost:16686/search?service=data-service"
+
+      - alert: DataService_StaticErrorRate
+        expr: data_service:error_rate:ratio5m > 0.10
+        for: 1m
+        labels:
+          severity: warning
+          slo: data-service
+          detection: static-threshold
+        annotations:
+          summary: "Tasa de error superior al 10% en data-service"
+          description: "Alerta de comparación: umbral estático, sin correlación con latencia."
+          trace_search: "http://localhost:16686/search?service=data-service"
+
+      - alert: DataService_DatabaseP99AboveSLO
+        expr: data_service:db_latency_p99:5m > 0.2
+        for: 1m
+        labels:
+          severity: warning
+          slo: data-service
+        annotations:
+          summary: "p99 de base de datos supera el SLO de 200 ms"
+          description: "Revisar spans db.query.products y el trace_id asociado en Loki/Jaeger."

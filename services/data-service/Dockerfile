@@ -10,7 +10,7 @@ RUN pip install --upgrade pip setuptools wheel
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY main.py .
+COPY src/main.py .
 
 ENV SERVICE_NAME=data-service
 ENV APP_VERSION=1.0.0

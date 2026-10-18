@@ -1,0 +1,11 @@
+# Optional AWS deployment values. Apply through an overlay, never by editing
+# the base manifest or committing credentials.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: data-service-aws-config
+  namespace: actividad1
+data:
+  CLOUD_PROVIDER: aws
+  DATABASE_PROVIDER: rds
+  OTEL_RESOURCE_ATTRIBUTES: deployment.environment=aws,service.namespace=maestria

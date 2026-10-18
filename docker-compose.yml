@@ -20,7 +20,8 @@ services:
       OTEL_INSTRUMENTATION_MICROMETER_ENABLED: "true"
       OTEL_RESOURCE_ATTRIBUTES: deployment.environment=local,service.namespace=maestria
       PRODUCT_AUDIT_ENABLED: "true"
-      PRODUCT_AUDIT_URL: http://52.14.125.218:9090
+      PRODUCT_AUDIT_URL: http://service-b:9090
+      DATA_SERVICE_PROXY_URL: http://service-b:9090
     depends_on:
       mysql:
         condition: service_healthy
@@ -58,11 +59,15 @@ services:
       OTEL_SDK_DISABLED: ${OTEL_SDK_DISABLED:-false}
       OTEL_INSTRUMENTATION_MICROMETER_ENABLED: "true"
       OTEL_RESOURCE_ATTRIBUTES: deployment.environment=local,service.namespace=maestria
+      DATA_SERVICE_URL: http://data-service:8002
+      CHAOS_LATENCY_MS: ${CHAOS_LATENCY_MS:-0}
     depends_on:
       mysql:
         condition: service_healthy
       otel-collector:
         condition: service_started
+      data-service:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://localhost:9090/actuator/health || exit 1"]
       interval: 15s
@@ -70,11 +75,61 @@ services:
       retries: 10
       start_period: 30s
 
+  data-service:
+    build:
+      context: ./services/data-service
+      dockerfile: Dockerfile
+    image: maestria/data-service:local
+    container_name: data-service
+    ports:
+      - "8002:8002"
+    environment:
+      CLOUD_PROVIDER: local
+      DATABASE_PROVIDER: postgres-local
+      DATABASE_URL: postgresql://app:app@postgres:5432/data_service
+      OTEL_SERVICE_NAME: data-service
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: otlp
+      OTEL_LOGS_EXPORTER: otlp
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment=local,service.namespace=maestria
+      CHAOS_ERROR_RATE: ${CHAOS_ERROR_RATE:-0}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8002/health')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  postgres:
+    image: postgres:16
+    container_name: data-service-postgres
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: data_service
+    ports:
+      - "5433:5432"
+    volumes:
+      - data_service_postgres_data:/var/lib/postgresql/data
+      - ./services/data-service/db/init.sql:/docker-entrypoint-initdb.d/001-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d data_service"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   mysql:
     image: mysql:8.0
     container_name: maestria
     environment:
-      MYSQL_ROOT_PASSWORD: MiPassRoot123!
+      MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: maestria_inventario_products
     ports:
       # 3307 is already used by another local stack on this workstation.
@@ -123,6 +178,7 @@ services:
       - "9093:9090"
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/alerts:/etc/prometheus/rules:ro
     depends_on:
       app:
         condition: service_healthy
@@ -162,6 +218,8 @@ services:
         condition: service_started
       loki:
         condition: service_started
+      postgres:
+        condition: service_healthy
 
   grafana:
     image: grafana/grafana:latest
@@ -189,3 +247,4 @@ volumes:
   postgres_data:
   grafana_data:
   loki_data:
+  data_service_postgres_data:

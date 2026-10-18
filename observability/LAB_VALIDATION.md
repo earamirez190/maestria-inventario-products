@@ -36,6 +36,7 @@ docker compose up -d --build
 # Service principal expuesto en el docker-compose como app o data-service según el compose
 curl -sS http://localhost:9092/health | jq . > evidence/local-health-app.json
 curl -sS http://localhost:8002/health | jq . > evidence/local-health-data-service.json
+curl -sS http://localhost:8002/ready | jq . > evidence/local-ready-data-service.json
 
 Si el endpoint expone trace_id (data-service lo hace):
 curl -sS "http://localhost:8002/data/products" | jq . > evidence/local-data-products.json
@@ -43,7 +44,7 @@ curl -sS "http://localhost:8002/data/products" | jq . > evidence/local-data-prod
 jq -r '.trace_id' evidence/local-data-products.json > evidence/trace_id.txt
 
 # Verificar métricas Prometheus (ejemplo p99 latency)
-curl -sG 'http://localhost:9093/api/v1/query' --data-urlencode 'query=histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))' | jq . > evidence/prometheus_p99.json
+curl -sG 'http://localhost:9093/api/v1/query' --data-urlencode 'query=histogram_quantile(0.99, sum(rate(db_query_duration_seconds_bucket[5m])) by (le))' | jq . > evidence/prometheus_p99.json
 
 # Exportar dashboard Grafana a JSON (si Grafana está en localhost:3002 y tienes credenciales)
 # Configurar variables GRAFANA_USER y GRAFANA_PASS
@@ -190,7 +191,7 @@ bash observability/chaos/latency-injection.sh http://localhost:9092/api/observab
 # 3) Ejecutar experimento (errores 10% en data-service)
 bash observability/chaos/error-injection.sh http://localhost:9092/api/observability/data/products 100 > evidence/chaos/error_run.txt
 
-# 4) Monitorizar alertas: guardar alertmanager API / cloud monitoring alerts en evidence
+# 4) Monitorizar alertas: guardar alertas de Prometheus en evidence
 curl -s http://localhost:9093/api/v1/alerts | jq . > evidence/alerts_during_chaos.json
 
 Comprobar MTTD < 2 minutos:
@@ -213,5 +214,4 @@ curl -sS http://localhost:8002/data/products | jq . > evidence/local/data_produc
 TRACE=$(jq -r '.trace_id' evidence/local/data_products_$TS.json)
 echo $TRACE > evidence/local/trace_$TS.txt
 curl -s "http://localhost:16686/api/traces/$TRACE" | jq . > evidence/local/trace_full_$TS.json
-
 

@@ -43,7 +43,7 @@ spec:
               value: mysql://$(DB_USER):$(DB_PASSWORD)@127.0.0.1:3306/inventorydb
           readinessProbe:
             httpGet:
-              path: /health
+              path: /ready
               port: http
             initialDelaySeconds: 10
             periodSeconds: 10

@@ -1,6 +1,6 @@
 # Taller Integrador — Observabilidad (Módulos A–E)
 
-Este documento describe los requerimientos, entregables y criterios de validación para la rama `develop-taller-integrador`.
+Este documento describe los requerimientos, entregables y criterios de validación para la rama `mydemo-deploy`. La ejecución rápida está resumida en `EXECUTION-CHECKLIST.md`.
 
 ## Resumen
 Incluir en la rama `develop-taller-integrador` una solución de observabilidad end-to-end para la aplicación distribuida, con: un nuevo microservicio `data-service` conectado a bases de datos en GCP Cloud SQL y AWS RDS, instrumentación completa con OpenTelemetry, reglas AIOps para detección automática de anomalías, visibilidad de red y seguridad, experimentos de Chaos Engineering y un reporte de madurez.
@@ -121,9 +121,9 @@ Criterios de aceptación:
   - chaos/ (scripts / manifests)
   - maturity/report.md
 
-## Siguientes pasos que puedo ejecutar ahora
-- Crear el esqueleto inicial en `services/data-service/` (código mínimo, Dockerfile, README).
-- Añadir `observability/otel-config.yaml` y ejemplo de bootstrap para SDK en cada servicio.
-- Crear plantillas de alertas y dashboard inicial.
+## Estado de esta rama
 
-Si quieres, procedo ahora a crear el esqueleto del `data-service` y los archivos base de `observability/` en la rama `develop-taller-integrador`.
+El esqueleto de `data-service`, la instrumentación OTel, los manifiestos GKE,
+las reglas de alertas, los dashboards, los experimentos y la IaC GCP están
+versionados. La activación de GKE, Cloud SQL, Flow Logs, SCC y RDS se ejecuta
+solo con credenciales y recursos del sandbox correspondiente.

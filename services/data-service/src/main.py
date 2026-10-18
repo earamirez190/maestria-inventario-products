@@ -19,6 +19,10 @@ from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import Resource, SERVICE_NAME, SERVICE_VERSION
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
+from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
+from opentelemetry._logs import set_logger_provider
+from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
+from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.psycopg2 import Psycopg2Instrumentor
 
@@ -34,6 +38,7 @@ ENV             = os.getenv("ENVIRONMENT", "production")
 DB_DSN = os.getenv("DATABASE_URL", "postgresql://app:app@postgres:5432/data_service")
 DATABASE_PROVIDER = os.getenv("DATABASE_PROVIDER", "postgres-local")
 DATABASE_SYSTEM = "mysql" if DB_DSN.lower().startswith("mysql") else "postgresql"
+DB_NAME = (urlparse(DB_DSN).path or "/data_service").lstrip("/")
 
 # ── OTel Resource ──────────────────────────────────────────────────
 resource = Resource.create({
@@ -66,6 +71,14 @@ meter_provider = MeterProvider(
 )
 metrics.set_meter_provider(meter_provider)
 meter = metrics.get_meter("data-service", APP_VERSION)
+
+# ── OTel logs (tercer pilar) ───────────────────────────────────────
+logger_provider = LoggerProvider(resource=resource)
+if os.getenv("OTEL_LOGS_EXPORTER", "otlp") != "none":
+    logger_provider.add_log_record_processor(
+        BatchLogRecordProcessor(OTLPLogExporter(endpoint=OTEL_ENDPOINT, insecure=True))
+    )
+set_logger_provider(logger_provider)
 
 # ── Instrumentos de métricas ───────────────────────────────────────
 db_query_duration = meter.create_histogram(
@@ -109,7 +122,8 @@ class OtelJsonFormatter(jsonlogger.JsonFormatter):
 
 handler = logging.StreamHandler()
 handler.setFormatter(OtelJsonFormatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
-logging.basicConfig(level=logging.INFO, handlers=[handler])
+otel_handler = LoggingHandler(level=logging.NOTSET, logger_provider=logger_provider)
+logging.basicConfig(level=logging.INFO, handlers=[handler, otel_handler])
 logger = logging.getLogger("data-service")
 
 # ── Auto-instrumentación ───────────────────────────────────────────
@@ -155,6 +169,7 @@ async def lifespan(app: FastAPI):
     yield
     tracer_provider.shutdown()
     meter_provider.shutdown()
+    logger_provider.shutdown()
 
 app = FastAPI(
     title="Data Service",
@@ -167,6 +182,25 @@ app = FastAPI(
 @app.get("/health")
 async def health():
     return {"status": "ok", "service": "data-service", "cloud": CLOUD_PROVIDER}
+
+
+@app.get("/ready")
+async def ready():
+    """Readiness real: verifica que el proceso puede alcanzar la base de datos."""
+    connection = None
+    try:
+        connection = get_connection()
+        cursor = connection.cursor()
+        cursor.execute("SELECT 1")
+        cursor.fetchone()
+        cursor.close()
+        return {"status": "ready", "service": "data-service", "db": DATABASE_PROVIDER}
+    except Exception as exc:
+        logger.warning("Readiness DB fallida", extra={"error": str(exc)})
+        raise HTTPException(status_code=503, detail="database not ready")
+    finally:
+        if connection is not None:
+            connection.close()
 
 
 @app.get("/data/products")
@@ -193,7 +227,7 @@ async def get_products(category: str = "all"):
         attributes={
             # ── OTel DB Semantic Conventions ─────────────────────
             "db.system":      DATABASE_SYSTEM,
-            "db.name":        "appdb",
+            "db.name":        DB_NAME,
             "db.operation":   "SELECT",
             "db.sql.table":   "products",
             "db.user":        "app",
@@ -275,7 +309,8 @@ async def get_product_analytics(product_id: str):
         "db.query.analytics",
         kind=trace.SpanKind.CLIENT,
         attributes={
-            "db.system":     "postgresql",
+            "db.system":     DATABASE_SYSTEM,
+            "db.name":       DB_NAME,
             "db.operation":  "SELECT",
             "db.sql.table":  "sales",
             "db.statement":  "SELECT AVG(quantity), SUM(revenue) FROM sales WHERE product_id = ?",

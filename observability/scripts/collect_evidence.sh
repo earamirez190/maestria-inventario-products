@@ -42,6 +42,12 @@ else
   echo "WARNING: data-service health endpoint not reachable at http://localhost:8002/health" >&2
 fi
 
+if curl -sS http://localhost:8002/ready -o /dev/null; then
+  curl -sS http://localhost:8002/ready | jq . > "$LOCAL_DIR/data_service_ready_$TS.json" || true
+else
+  echo "WARNING: data-service readiness endpoint not reachable at http://localhost:8002/ready" >&2
+fi
+
 # 2) API call that includes trace_id
 echo "- Calling data-service /data/products"
 DATA_PRODUCTS_OUT="$LOCAL_DIR/data_products_$TS.json"
@@ -64,10 +70,13 @@ fi
 echo "- Querying Prometheus (p99 latency)"
 PROM_OUT="$LOCAL_DIR/prometheus_p99_$TS.json"
 if curl -sG 'http://localhost:9093/api/v1/query' --data-urlencode 'query=histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))' -o "$PROM_OUT"; then
-  jq . "$PROM_OUT" > "$PROM_OUT" || true
   echo "Saved $PROM_OUT"
 else
   echo "Prometheus not reachable at http://localhost:9093 (skipping)" >&2
+fi
+
+if curl -sS http://localhost:9464/metrics -o "$LOCAL_DIR/otel_prometheus_metrics_$TS.txt"; then
+  echo "Saved Collector Prometheus metrics"
 fi
 
 # 4) Grafana export (Golden Signals)
@@ -101,6 +110,10 @@ if curl -s http://localhost:9093/api/v1/alerts -o "$LOCAL_DIR/alerts_$TS.json"; 
   echo "Saved alerts to $LOCAL_DIR/alerts_$TS.json"
 else
   echo "Alertmanager not reachable at http://localhost:9093 (skipping)" >&2
+fi
+
+if curl -s http://localhost:9093/api/v1/rules -o "$LOCAL_DIR/rules_$TS.json"; then
+  echo "Saved Prometheus rules to $LOCAL_DIR/rules_$TS.json"
 fi
 
 # 7) Chaos scripts output (run them optionally)

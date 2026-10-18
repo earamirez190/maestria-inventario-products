@@ -198,6 +198,8 @@ jvm_memory_used_bytes
 
 # 6. Logs
 
+![alt text](image-9.png)
+
 Flujo implementado:
 
 ```text
@@ -250,6 +252,10 @@ Métricas monitoreadas:
 - Spans exportados
 
 ![alt text](image.png)
+
+Analitics:
+
+![alt text](image-10.png)
 
 ---
 

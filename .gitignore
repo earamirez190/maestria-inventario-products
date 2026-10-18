@@ -38,3 +38,8 @@ out/
 
 # Resultados locales de benchmark (los scripts sí se versionan)
 benchmark/results/
+
+# Dumps crudos de métricas locales; el resumen y los CSV de cada corrida sí se versionan.
+evidence/chaos/run_*/app-metrics.txt
+evidence/chaos/run_*/otel-prometheus-metrics.txt
+evidence/chaos/run_*/timestamps.txt

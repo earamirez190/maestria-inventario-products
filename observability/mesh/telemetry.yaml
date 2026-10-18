@@ -1,0 +1,21 @@
+apiVersion: telemetry.istio.io/v1alpha1
+kind: Telemetry
+metadata:
+  name: actividad1-telemetry
+  namespace: actividad1
+spec:
+  metrics:
+    - providers:
+        - name: prometheus
+      overrides:
+        - match:
+            metric: ALL_METRICS
+          tagOverrides:
+            destination_service:
+              value: "%{DESTINATION_SERVICE}"
+            response_code:
+              value: "%{RESPONSE_CODE}"
+  tracing:
+    - providers:
+        - name: otel
+      randomSamplingPercentage: 100.0

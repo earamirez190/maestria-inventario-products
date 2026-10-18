@@ -1,0 +1,43 @@
+{
+  "description": "Stop one audit ECS task and observe ECS replacement while the second audit task remains available.",
+  "targets": {
+    "AuditTasks": {
+      "resourceType": "aws:ecs:task",
+      "resourceTags": {
+        "ChaosTarget": "audit"
+      },
+      "filters": [
+        {
+          "path": "ClusterArn",
+          "values": [
+            "REPLACE_WITH_ECS_CLUSTER_ARN"
+          ]
+        }
+      ],
+      "selectionMode": "COUNT(1)"
+    }
+  },
+  "actions": {
+    "StopOneAuditTask": {
+      "actionId": "aws:ecs:stop-task",
+      "targets": {
+        "Tasks": "AuditTasks"
+      }
+    }
+  },
+  "stopConditions": [
+    {
+      "source": "aws:cloudwatch:alarm",
+      "value": "REPLACE_WITH_CHAOS_STOP_ALARM_5XX_ARN"
+    },
+    {
+      "source": "aws:cloudwatch:alarm",
+      "value": "REPLACE_WITH_CHAOS_STOP_ALARM_UNHEALTHY_ARN"
+    }
+  ],
+  "roleArn": "REPLACE_WITH_FIS_EXPERIMENT_ROLE_ARN",
+  "tags": {
+    "Purpose": "controlled-chaos-lab",
+    "ChaosTarget": "audit"
+  }
+}

@@ -15,13 +15,13 @@
 - CI y DevSecOps: `.github/workflows/ci.yml`.
 - El pipeline ejecuta pruebas con MySQL, construye el JAR, construye la imagen Docker y ejecuta Trivy.
 - Despliegue en GCP: `.github/workflows/deploy.yaml` publica la imagen en Artifact Registry y actualiza GKE.
-- Despliegue en AWS: `.github/workflows/deploy-aws.yaml` publica la imagen en ECR y actualiza un servicio ECS Fargate existente.
+- Despliegue en AWS: `.github/workflows/deploy-aws.yaml` publica las imágenes de productos y auditoría en Docker Hub y actualiza los tres servicios ECS Fargate: productos, auditoría y data-service.
 
 ## Docker
 
 - `Dockerfile`: construye la aplicacion Spring Boot con Java 21.
-- `docker-compose.yml`: levanta la aplicación, MySQL, Prometheus, Grafana y el stack local de observabilidad.
-- Los workflows publican la misma imagen construida desde el Dockerfile a los registros de cada proveedor.
+- `docker-compose.yml`: levanta productos, auditoría, data-service, MySQL, Prometheus, Grafana y el stack local de observabilidad.
+- Los workflows de GCP y AWS tienen destinos y configuración independientes; el workflow de AWS publica imágenes distintas para productos y auditoría.
 
 ### Publicar la imagen de la aplicacion en Docker Hub
 
@@ -37,35 +37,41 @@ Esto publica unicamente la imagen de la aplicacion; MySQL, Prometheus, Grafana y
 
 ### Despliegue AWS ECS Fargate
 
-El workflow de AWS requiere que el cluster y servicio ECS Fargate, la definición inicial de tarea y la base de datos ya existan. Construye la imagen desde el `Dockerfile`, la publica en el repositorio Docker Hub público `earamirez/maestria-inventario-products` y actualiza el servicio ECS con la etiqueta SHA del commit. No requiere un repositorio ECR.
+El workflow de AWS requiere que el cluster y los tres servicios ECS Fargate (productos, auditoría y data-service), sus definiciones de tarea y la base de datos ya existan. Construye y publica las imágenes `earamirez/maestria-inventario-products` y `earamirez/maestria-inventario-audit` con la etiqueta SHA del commit. Productos y data-service usan la misma imagen de productos; el workflow configura el perfil `data-service` para el servicio de datos. Actualiza los tres servicios y espera a que estén estables. No requiere un repositorio ECR. Para crear la arquitectura de laboratorio ECS con servicios separados y preparar experimentos AWS FIS, consulta [`deploy/aws/README.md`](deploy/aws/README.md).
 
 | Variable | Valor |
 | --- | --- |
-| `AWS_REGION` | Región AWS donde están los recursos |
-| `ECS_CLUSTER` | Nombre del cluster ECS |
-| `ECS_SERVICE` | Nombre del servicio ECS Fargate |
-| `ECS_CONTAINER_NAME` | Nombre del contenedor de la aplicación en la definición de tarea |
+| `AWS_REGION` | `us-east-2` |
+| `ECS_CLUSTER` | `prd-maestriainventario-ecs` |
+| `ECS_SERVICE` | `td-maestriainventario-inventario-products-api-prd-service-wkkqqol1` |
+| `ECS_CONTAINER_NAME` | `maestria-inventario-products-api` |
+| `ECS_AUDIT_SERVICE` | `td-maestriainventario-audi-api-prd-service-4c4nxx0x` |
+| `ECS_AUDIT_CONTAINER_NAME` | `maestria-inventario-audi-api` |
+| `ECS_DATA_SERVICE` | `td-maestriainventario-service-api-prod-service-onouq3k1` |
+| `ECS_DATA_CONTAINER_NAME` | `maestriainventario-service-api` |
+| `DATA_SERVICE_URL` | URL base privada de data-service alcanzable desde productos, incluyendo esquema y puerto |
 
-Agrega estos secretos del repositorio GitHub: `AWS_ROLE_TO_ASSUME` con el ARN del rol IAM que confía en GitHub Actions mediante OIDC, `DOCKERHUB_USERNAME` con el usuario de Docker Hub y `DOCKERHUB_TOKEN` con un access token de Docker Hub (no la contraseña de la cuenta). El rol IAM necesita permisos para describir y registrar definiciones de tarea, actualizar y consultar el servicio ECS, y pasar los roles de ejecución/tarea ECS (`iam:PassRole`); ya no requiere permisos para publicar en ECR.
+Agrega estos secretos del repositorio GitHub: `AWS_ROLE_TO_ASSUME` con el ARN del rol IAM que confía en GitHub Actions mediante OIDC, `DOCKERHUB_USERNAME` con el usuario de Docker Hub y `DOCKERHUB_TOKEN` con un access token de Docker Hub (no la contraseña de la cuenta). Crea previamente los repositorios Docker Hub de productos y auditoría y permite que ECS descargue ambas imágenes. El rol IAM necesita permisos para describir y registrar definiciones de tarea, actualizar y consultar los tres servicios ECS, y pasar los roles de ejecución/tarea ECS (`iam:PassRole`); ya no requiere permisos para publicar en ECR.
 
-La definición inicial de tarea debe usar Fargate, plataforma Linux x86_64, y exponer el puerto `9090` del contenedor. Configura la URL JDBC, usuario y contraseña de la base de datos en la definición de tarea; almacena credenciales en AWS Secrets Manager y referencia esos secretos desde ECS, no en el repositorio. El servicio Fargate y RDS deben tener conectividad de red entre sí y grupos de seguridad que permitan el puerto de MySQL desde las tareas.
+Las tareas deben usar Fargate y exponer el puerto `9090` en sus respectivos contenedores. Configura `DATA_SERVICE_URL` con la dirección privada real de data-service (por ejemplo, el nombre DNS de Service Connect si ya está configurado); no uses `localhost` ni una dirección pública. La configuración de descubrimiento y los grupos de seguridad deben permitir productos→data-service por el puerto `9090` y ambos servicios→MySQL por el puerto `3306`. Configura la URL JDBC en ECS y almacena las credenciales en AWS Secrets Manager, no en el repositorio. Para el laboratorio FIS, revisa los prerrequisitos, guardrails, costes y comandos en `deploy/aws/README.md`; preparar el repositorio no ejecuta ni autoriza experimentos en AWS.
 
-Al completarse correctamente el workflow `CI DevSecOps` en `main`, el workflow de AWS crea las etiquetas `latest` y SHA del commit en Docker Hub, actualiza la imagen del contenedor en la definición de tarea y espera a que el servicio ECS quede estable. También puede iniciarse manualmente desde GitHub Actions.
+Al completarse correctamente el workflow `CI DevSecOps` en `main`, el workflow de AWS crea las etiquetas `latest` y SHA del commit para ambas imágenes en Docker Hub, actualiza productos, auditoría y data-service y espera a que los tres servicios ECS queden estables. También puede iniciarse manualmente desde GitHub Actions.
 
 ### Monitoreo con Prometheus y Grafana
-- `Prometheus`: Configurado mediante `prometheus.yml` para realizar scraping de las métricas expuestas por Spring Boot Actuator, disponible en `http://localhost:9093`.
+- `Prometheus`: Configurado mediante `prometheus.yml` para realizar scraping de las métricas expuestas por Spring Boot Actuator en productos, auditoría y data-service, disponible en `http://localhost:9093`.
 - `Grafana`: Incluye el tablero `Inventario · Observabilidad E2E` con seis paneles: throughput, errores 5xx, latencia promedio, disponibilidad 2xx, CPU por microservicio y errores del Collector. Está disponible en `http://localhost:3002` con usuario `admin` y contraseña `admin`. También tiene las fuentes Loki y Jaeger provisionadas para correlacionar logs y trazas.
 - `MySQL`: El puerto externo local es `3310`; dentro de Docker Compose la aplicación continúa conectándose a `mysql:3306`.
 - `SonarQube`: Disponible en `http://localhost:9001`.
 - `Uso con Docker Compose`: Se puede levantar el entorno ejecutando `docker compose up -d --build`.
 - `service-b` (auditoría): disponible en `http://localhost:9094`; dentro de Docker el servicio A lo invoca como `http://service-b:9090`.
+- `data-service`: usa la misma imagen de productos con el perfil `data-service`; productos solicita `GET /data/analytics/{productId}` al guardar, sin cambiar el JSON de respuesta pública del POST. La llamada tiene timeout y es fail-open: si data-service no responde, se registra un warning y la creación del producto se conserva.
 
 - La aplicación expone su API y métricas en `http://localhost:9092` y `http://localhost:9092/actuator/prometheus`.
 
 ### Observabilidad OpenTelemetry local
 
 - La aplicación usa el starter de OpenTelemetry para instrumentación automática de Spring Web, JDBC, métricas y logs, además de spans de negocio `products.save` y `products.list`.
-- La arquitectura local es `service-a (products) -> service-b (audit) -> MySQL`; al crear un producto, A llama a B por HTTP y B persiste el evento en `product_audit_events`.
+- La arquitectura local es `products -> audit` y `products -> data-service`, con ambos servicios accediendo a MySQL; al crear un producto, A llama a B para persistir el evento de auditoría y a C para consultar la analítica del producto.
 - La propagación W3C conserva el mismo `trace_id` entre ambos servicios, sus spans HTTP/JDBC y sus logs.
 - Los logs se emiten como JSON y conservan `trace_id` y `span_id` tanto en la salida de la aplicación como en Loki.
 - El Collector recibe OTLP por gRPC en `localhost:4317` y HTTP/protobuf en `localhost:4318`; expone las métricas de la aplicación en `localhost:9464`, sus métricas internas en `localhost:8888` y su healthcheck en `localhost:13133`.

@@ -4,6 +4,7 @@ import com.arq.maestria_inventario_products.domain.model.Product;
 import com.arq.maestria_inventario_products.domain.repository.ProductRepository;
 import com.arq.maestria_inventario_products.domain.strategy.DiscountStrategy;
 import io.opentelemetry.instrumentation.annotations.WithSpan;
+import org.springframework.context.annotation.Profile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -11,16 +12,22 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 @Service
+@Profile("!data-service")
 public class ProductService {
 
     private static final Logger log = LoggerFactory.getLogger(ProductService.class);
 
     private final ProductRepository repository;
     private final ProductAuditClient auditClient;
+    private final ProductDataServiceClient dataServiceClient;
 
-    public ProductService(ProductRepository repository, ProductAuditClient auditClient) {
+    public ProductService(
+            ProductRepository repository,
+            ProductAuditClient auditClient,
+            ProductDataServiceClient dataServiceClient) {
         this.repository = repository;
         this.auditClient = auditClient;
+        this.dataServiceClient = dataServiceClient;
     }
 
     @WithSpan("products.save")
@@ -37,6 +44,7 @@ public class ProductService {
         log.info("Product saved: id={}, name={}, quantity={}",
                 savedProduct.getId(), savedProduct.getName(), savedProduct.getQuantity());
         auditClient.auditProductSaved(savedProduct);
+        dataServiceClient.analyzeProduct(savedProduct);
         return savedProduct;
     }
 

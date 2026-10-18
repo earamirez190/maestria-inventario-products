@@ -9,21 +9,20 @@ processors:
   memory_limiter:
 
 exporters:
-  logging:
-    logLevel: debug
+  debug: {}
   otlp:
     endpoint: "localhost:4318"
     tls:
       insecure: true
   prometheus:
-    endpoint: :8888
+    endpoint: ":8888"
 
 service:
   pipelines:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [logging, otlp]
+      exporters: [debug, otlp]
     metrics:
       receivers: [otlp]
       processors: [batch]

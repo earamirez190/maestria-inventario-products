@@ -21,6 +21,8 @@ processors:
     timeout: 5s
 
 exporters:
+  googlecloud:
+    project: proyect-otel-final-512002
   awsxray:
     region: us-east-1
   debug:
@@ -37,12 +39,12 @@ service:
     traces:
       receivers: [otlp]
       processors: [memory_limiter, resource, batch]
-      exporters: [awsxray, debug]
+      exporters: [googlecloud, awsxray, debug]
     metrics:
       receivers: [otlp]
       processors: [memory_limiter, resource, batch]
-      exporters: [debug]
+      exporters: [googlecloud,awsxray,debug]
     logs:
       receivers: [otlp]
       processors: [memory_limiter, resource, batch]
-      exporters: [debug]
+      exporters: [googlecloud,awsxray, debug]

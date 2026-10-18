@@ -16,7 +16,13 @@ env:
   ECS_CLUSTER: ${{ vars.ECS_CLUSTER }}
   ECS_SERVICE: ${{ vars.ECS_SERVICE }}
   ECS_CONTAINER_NAME: ${{ vars.ECS_CONTAINER_NAME }}
+  ECS_AUDIT_SERVICE: ${{ vars.ECS_AUDIT_SERVICE }}
+  ECS_AUDIT_CONTAINER_NAME: ${{ vars.ECS_AUDIT_CONTAINER_NAME }}
+  ECS_DATA_SERVICE: ${{ vars.ECS_DATASERVICE_SERVICE }}
+  ECS_DATA_CONTAINER_NAME: ${{ vars.ECS_SERVICE_CONTAINER_NAME }}
+  DATA_SERVICE_URL: ${{ vars.DATA_SERVICE_URL }}
   DOCKERHUB_IMAGE: earamirez/maestria-inventario-products
+  DOCKERHUB_AUDIT_IMAGE: earamirez/maestria-inventario-audit
 
 jobs:
   deploy:
@@ -38,6 +44,15 @@ jobs:
         with:
           ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
 
+      - name: Validate ECS deployment variables
+        run: |
+          for variable in AWS_REGION ECS_CLUSTER ECS_SERVICE ECS_CONTAINER_NAME ECS_AUDIT_SERVICE ECS_AUDIT_CONTAINER_NAME ECS_DATA_SERVICE ECS_DATA_CONTAINER_NAME DATA_SERVICE_URL; do
+            if [ -z "${!variable}" ]; then
+              echo "Required repository variable ${variable} is not configured" >&2
+              exit 1
+            fi
+          done
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -53,59 +68,94 @@ jobs:
             --username "${DOCKERHUB_USERNAME}" \
             --password-stdin
 
-      - name: Build and push image to Docker Hub
+      - name: Build and push products and audit images to Docker Hub
         run: |
           docker build \
             -t "${DOCKERHUB_IMAGE}:${IMAGE_TAG}" \
             -t "${DOCKERHUB_IMAGE}:latest" \
             .
+          docker build \
+            -f services/service-b/Dockerfile \
+            -t "${DOCKERHUB_AUDIT_IMAGE}:${IMAGE_TAG}" \
+            -t "${DOCKERHUB_AUDIT_IMAGE}:latest" \
+            .
           docker push "${DOCKERHUB_IMAGE}:${IMAGE_TAG}"
           docker push "${DOCKERHUB_IMAGE}:latest"
+          docker push "${DOCKERHUB_AUDIT_IMAGE}:${IMAGE_TAG}"
+          docker push "${DOCKERHUB_AUDIT_IMAGE}:latest"
 
-      - name: Update ECS task definition with the new image
+      - name: Update products, audit, and data ECS services
         run: |
-          TASK_DEFINITION_ARN="$(aws ecs describe-services \
-            --cluster "${ECS_CLUSTER}" \
-            --services "${ECS_SERVICE}" \
-            --query 'services[0].taskDefinition' \
-            --output text)"
+          update_service_image() {
+            local service_name="$1"
+            local container_name="$2"
+            local image="$3"
+            local spring_profile="$4"
+            local data_service_url="$5"
+            local otel_service_name="$6"
+            local task_definition_arn current_task_definition updated_task_definition new_task_definition_arn
 
-          if [ -z "${TASK_DEFINITION_ARN}" ] || [ "${TASK_DEFINITION_ARN}" = "None" ]; then
-            echo "Could not find the task definition for ECS service ${ECS_SERVICE}" >&2
-            exit 1
-          fi
+            task_definition_arn="$(aws ecs describe-services \
+              --cluster "${ECS_CLUSTER}" \
+              --services "${service_name}" \
+              --query 'services[0].taskDefinition' \
+              --output text)"
 
-          CURRENT_TASK_DEFINITION="$(aws ecs describe-task-definition \
-            --task-definition "${TASK_DEFINITION_ARN}" \
-            --query taskDefinition \
-            --output json)"
+            if [ -z "${task_definition_arn}" ] || [ "${task_definition_arn}" = "None" ]; then
+              echo "Could not find the task definition for ECS service ${service_name}" >&2
+              return 1
+            fi
 
-          if ! echo "${CURRENT_TASK_DEFINITION}" | jq -e \
-            --arg name "${ECS_CONTAINER_NAME}" \
-            'any(.containerDefinitions[]; .name == $name)' > /dev/null; then
-            echo "Container ${ECS_CONTAINER_NAME} was not found in the ECS task definition" >&2
-            exit 1
-          fi
+            current_task_definition="$(aws ecs describe-task-definition \
+              --task-definition "${task_definition_arn}" \
+              --query taskDefinition \
+              --output json)"
 
-          UPDATED_TASK_DEFINITION="$(echo "${CURRENT_TASK_DEFINITION}" | jq \
-            --arg name "${ECS_CONTAINER_NAME}" \
-            --arg image "${DOCKERHUB_IMAGE}:${IMAGE_TAG}" \
-            'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
-             | .containerDefinitions |= map(if .name == $name then .image = $image else . end)')"
+            if ! echo "${current_task_definition}" | jq -e \
+              --arg name "${container_name}" \
+              'any(.containerDefinitions[]; .name == $name)' > /dev/null; then
+              echo "Container ${container_name} was not found in the task definition for ${service_name}" >&2
+              return 1
+            fi
 
-          NEW_TASK_DEFINITION_ARN="$(aws ecs register-task-definition \
-            --cli-input-json "${UPDATED_TASK_DEFINITION}" \
-            --query 'taskDefinition.taskDefinitionArn' \
-            --output text)"
+            updated_task_definition="$(echo "${current_task_definition}" | jq \
+              --arg name "${container_name}" \
+              --arg image "${image}" \
+              --arg profile "${spring_profile}" \
+              --arg dataUrl "${data_service_url}" \
+              --arg otelName "${otel_service_name}" \
+              'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
+               | .containerDefinitions |= map(if .name == $name then
+                   .image = $image
+                   | if $profile != "" then
+                       .environment = ((.environment // [] | map(select(.name != "SPRING_PROFILES_ACTIVE"))) + [{"name":"SPRING_PROFILES_ACTIVE","value":$profile}])
+                     else . end
+                   | if $dataUrl != "" then
+                       .environment = ((.environment // [] | map(select(.name != "DATA_SERVICE_ENABLED" and .name != "DATA_SERVICE_URL"))) + [{"name":"DATA_SERVICE_ENABLED","value":"true"},{"name":"DATA_SERVICE_URL","value":$dataUrl}])
+                     else . end
+                   | if $otelName != "" then
+                       .environment = ((.environment // [] | map(select(.name != "OTEL_SERVICE_NAME"))) + [{"name":"OTEL_SERVICE_NAME","value":$otelName}])
+                     else . end
+                 else . end)')"
 
-          aws ecs update-service \
-            --cluster "${ECS_CLUSTER}" \
-            --service "${ECS_SERVICE}" \
-            --task-definition "${NEW_TASK_DEFINITION_ARN}" \
-            --force-new-deployment
+            new_task_definition_arn="$(aws ecs register-task-definition \
+              --cli-input-json "${updated_task_definition}" \
+              --query 'taskDefinition.taskDefinitionArn' \
+              --output text)"
+
+            aws ecs update-service \
+              --cluster "${ECS_CLUSTER}" \
+              --service "${service_name}" \
+              --task-definition "${new_task_definition_arn}" \
+              --force-new-deployment
+          }
+
+          update_service_image "${ECS_SERVICE}" "${ECS_CONTAINER_NAME}" "${DOCKERHUB_IMAGE}:${IMAGE_TAG}" "" "${DATA_SERVICE_URL}" "maestria-inventario-products"
+          update_service_image "${ECS_AUDIT_SERVICE}" "${ECS_AUDIT_CONTAINER_NAME}" "${DOCKERHUB_AUDIT_IMAGE}:${IMAGE_TAG}" "" "" "maestria-inventario-audit"
+          update_service_image "${ECS_DATA_SERVICE}" "${ECS_DATA_CONTAINER_NAME}" "${DOCKERHUB_IMAGE}:${IMAGE_TAG}" "data-service" "" "maestria-inventario-data-service"
 
       - name: Wait for ECS service deployment
         run: |
           aws ecs wait services-stable \
             --cluster "${ECS_CLUSTER}" \
-            --services "${ECS_SERVICE}"
+            --services "${ECS_SERVICE}" "${ECS_AUDIT_SERVICE}" "${ECS_DATA_SERVICE}"

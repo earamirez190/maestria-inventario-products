@@ -2,29 +2,35 @@ receivers:
   otlp:
     protocols:
       grpc:
+        endpoint: "0.0.0.0:4317"
       http:
+        endpoint: "0.0.0.0:4318"
 
 processors:
-  batch:
   memory_limiter:
+    # Ajusta estos valores según la memoria disponible en tu host/container
+    limit_mib: 2048
+    spike_limit_mib: 256
+    check_interval: 5s
+  batch: {}
 
 exporters:
-  logging:
-    logLevel: debug
-  otlp:
-    endpoint: "localhost:4318"
+  debug: {}
+  otlp_grpc:
+    # En Windows/Docker Desktop, use host.docker.internal para alcanzar servicios en el host
+    endpoint: "host.docker.internal:4317"
     tls:
       insecure: true
   prometheus:
-    endpoint: :8888
+    endpoint: ":8889"
 
 service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [batch]
-      exporters: [logging, otlp]
+      processors: [memory_limiter, batch]
+      exporters: [debug, otlp_grpc]
     metrics:
       receivers: [otlp]
-      processors: [batch]
+      processors: [memory_limiter, batch]
       exporters: [prometheus]

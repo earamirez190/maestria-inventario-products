@@ -72,9 +72,9 @@ services:
 
   mysql:
     image: mysql:8.0
-    container_name: inventario-products-mysql
+    container_name: maestria
     environment:
-      MYSQL_ROOT_PASSWORD: root
+      MYSQL_ROOT_PASSWORD: MiPassRoot123!
       MYSQL_DATABASE: maestria_inventario_products
     ports:
       # 3307 is already used by another local stack on this workstation.

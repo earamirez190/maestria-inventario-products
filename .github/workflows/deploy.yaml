@@ -12,7 +12,7 @@ permissions:
   id-token: write
 
 env:
-  PROJECT_ID: mydemo-505323
+  PROJECT_ID: proyect-otel-final-512002
   GAR_LOCATION: us-central1
   GAR_REPOSITORY: actividad1-images
   IMAGE_NAME: maestria-inventario-products

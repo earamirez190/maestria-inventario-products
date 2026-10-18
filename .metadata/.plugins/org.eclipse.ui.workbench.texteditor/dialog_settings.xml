@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<section name="Workbench">
+	<section name="java.lang.Class">
+		<item key="selection" value="import io.opentelemetry.instrumentation.annotations.WithSpan;"/>
+		<item key="replaceBarOpen" value="false"/>
+		<list key="findhistory">
+			<item value="dependency"/>
+			<item value="import io.opentelemetry.instrumentation.annotations.WithSpan;"/>
+		</list>
+	</section>
+</section>

@@ -7,12 +7,14 @@ import com.arq.maestria_inventario_products.domain.strategy.PercentageDiscountSt
 import com.arq.maestria_inventario_products.domain.strategy.WholesaleDiscountStrategy;
 import com.arq.maestria_inventario_products.service.ProductService;
 import org.springframework.http.HttpStatus;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/products")
+@Profile("!data-service")
 public class ProductController {
 
     private final ProductService productService;

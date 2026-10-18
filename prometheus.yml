@@ -28,3 +28,10 @@ scrape_configs:
       - targets: ['service-b:9090']
         labels:
           app: 'maestria-inventario-audit'
+
+  - job_name: 'spring-boot-data-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['data-service:9090']
+        labels:
+          app: 'maestria-inventario-data-service'

@@ -1,0 +1,49 @@
+{
+  "description": "Controlled one-minute CPU stress on one audit ECS Fargate task.",
+  "targets": {
+    "AuditTasks": {
+      "resourceType": "aws:ecs:task",
+      "resourceTags": {
+        "ChaosTarget": "audit"
+      },
+      "filters": [
+        {
+          "path": "ClusterArn",
+          "values": [
+            "REPLACE_WITH_ECS_CLUSTER_ARN"
+          ]
+        }
+      ],
+      "selectionMode": "COUNT(1)"
+    }
+  },
+  "actions": {
+    "AuditCpuStress": {
+      "actionId": "aws:ecs:task-cpu-stress",
+      "parameters": {
+        "duration": "PT1M",
+        "percent": "50",
+        "workers": "1",
+        "installDependencies": "True"
+      },
+      "targets": {
+        "Tasks": "AuditTasks"
+      }
+    }
+  },
+  "stopConditions": [
+    {
+      "source": "aws:cloudwatch:alarm",
+      "value": "REPLACE_WITH_CHAOS_STOP_ALARM_5XX_ARN"
+    },
+    {
+      "source": "aws:cloudwatch:alarm",
+      "value": "REPLACE_WITH_CHAOS_STOP_ALARM_UNHEALTHY_ARN"
+    }
+  ],
+  "roleArn": "REPLACE_WITH_FIS_EXPERIMENT_ROLE_ARN",
+  "tags": {
+    "Purpose": "controlled-chaos-lab",
+    "ChaosTarget": "audit"
+  }
+}

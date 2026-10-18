@@ -2,6 +2,7 @@ package com.arq.maestria_inventario_products.service;
 
 import com.arq.maestria_inventario_products.domain.model.Product;
 import io.opentelemetry.instrumentation.annotations.WithSpan;
+import org.springframework.context.annotation.Profile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -10,6 +11,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
 @Component
+@Profile("!data-service")
 public class ProductAuditClient {
 
     private static final Logger log = LoggerFactory.getLogger(ProductAuditClient.class);

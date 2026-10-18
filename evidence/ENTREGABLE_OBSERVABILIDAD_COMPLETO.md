@@ -16,10 +16,22 @@ Este documento consolida la evidencia técnica de la implementación de observab
 La solución incorpora los tres pilares fundamentales de observabilidad:
 
 - Métricas
+
+![alt text](image-2.png)
+
+![alt text](image-5.png)
 - Logs
+![alt text](image-1.png)
+
 - Trazas
 
 Adicionalmente se implementó monitoreo de infraestructura Kubernetes, OpenTelemetry, Prometheus, Grafana, Loki y Chaos Engineering mediante Litmus.
+
+![alt text](image-3.png)
+
+![alt text](image-6.png)
+
+![alt text](image-7.png)
 
 ---
 
@@ -36,6 +48,8 @@ Adicionalmente se implementó monitoreo de infraestructura Kubernetes, OpenTelem
 ### Observabilidad
 - OpenTelemetry Collector
 - Prometheus (Google Managed Prometheus)
+
+![alt text](image-4.png)
 - Grafana
 - Loki
 
@@ -228,6 +242,8 @@ Métricas monitoreadas:
 - CPU
 - Memoria
 - Spans exportados
+
+![alt text](image.png)
 
 ---
 

@@ -44,6 +44,10 @@ Adicionalmente se implementó monitoreo de infraestructura Kubernetes, OpenTelem
 ### Aplicación
 - maestria-inventario-products
 
+GCP:
+
+![alt text](image-8.png)
+
 ### Base de Datos
 - MySQL
 

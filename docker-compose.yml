@@ -20,7 +20,7 @@ services:
       OTEL_INSTRUMENTATION_MICROMETER_ENABLED: "true"
       OTEL_RESOURCE_ATTRIBUTES: deployment.environment=local,service.namespace=maestria
       PRODUCT_AUDIT_ENABLED: "true"
-      PRODUCT_AUDIT_URL: http://service-b:9090
+      PRODUCT_AUDIT_URL: http://52.14.125.218:9090
     depends_on:
       mysql:
         condition: service_healthy

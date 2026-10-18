@@ -1,247 +1,240 @@
 {
-  "displayName": "Chaos Engineering — GKE / Maestria Inventario (Resumen)",
-  "etag": "BwW_placeholder",
+  "displayName": "Maestria Inventario - Observabilidad y Chaos Engineering",
   "gridLayout": {
     "columns": 2,
     "widgets": [
       {
-        "title": "App — Latencia (p50/p95/p99) (custom metric placeholder)",
+        "title": "Throughput (Requests/sec)",
         "xyChart": {
           "dataSets": [
             {
+              "plotType": "LINE",
               "timeSeriesQuery": {
-                "timeSeriesFilter": {
-                  "filter": "metric.type=\"custom.googleapis.com/http/server_latency\" resource.type=\"k8s_container\"",
-                  "aggregation": {
-                    "perSeriesAligner": "ALIGN_PERCENTILE_50",
-                    "alignmentPeriod": "60s"
-                  }
-                }
-              }
-            },
-            {
-              "timeSeriesQuery": {
-                "timeSeriesFilter": {
-                  "filter": "metric.type=\"custom.googleapis.com/http/server_latency\" resource.type=\"k8s_container\"",
-                  "aggregation": {
-                    "perSeriesAligner": "ALIGN_PERCENTILE_95",
-                    "alignmentPeriod": "60s"
-                  }
-                }
-              }
-            },
-            {
-              "timeSeriesQuery": {
-                "timeSeriesFilter": {
-                  "filter": "metric.type=\"custom.googleapis.com/http/server_latency\" resource.type=\"k8s_container\"",
-                  "aggregation": {
-                    "perSeriesAligner": "ALIGN_PERCENTILE_99",
-                    "alignmentPeriod": "60s"
-                  }
-                }
-              }
-            }
-          ],
-          "timeshiftDuration": "0s"
-        }
-      },
-      {
-        "title": "App — Error rate (5xx) (custom metric placeholder)",
-        "xyChart": {
-          "dataSets": [
-            {
-              "timeSeriesQuery": {
-                "timeSeriesFilter": {
-                  "filter": "metric.type=\"custom.googleapis.com/http/error_count\" resource.type=\"k8s_container\"",
-                  "aggregation": {
-                    "perSeriesAligner": "ALIGN_RATE",
-                    "alignmentPeriod": "60s"
-                  }
-                }
+                "prometheusQuery": "sum(rate(http_server_requests_seconds_count[5m]))"
               }
             }
           ]
         }
       },
       {
-        "title": "Requests / s (Load Balancer)",
+        "title": "Latencia Promedio",
         "xyChart": {
           "dataSets": [
             {
+              "plotType": "LINE",
               "timeSeriesQuery": {
-                "timeSeriesFilter": {
-                  "filter": "metric.type=\"loadbalancing.googleapis.com/https/request_count\" resource.type=\"http_load_balancer\"",
-                  "aggregation": {
-                    "perSeriesAligner": "ALIGN_RATE",
-                    "alignmentPeriod": "60s"
-                  }
-                }
+                "prometheusQuery": "rate(http_server_requests_seconds_sum[5m]) / rate(http_server_requests_seconds_count[5m])"
               }
             }
           ]
         }
       },
       {
-        "title": "Backend Latency (Load Balancer)",
+        "title": "Latencia P50",
         "xyChart": {
           "dataSets": [
             {
               "timeSeriesQuery": {
-                "timeSeriesFilter": {
-                  "filter": "metric.type=\"loadbalancing.googleapis.com/https/backend_latencies\" resource.type=\"http_load_balancer\"",
-                  "aggregation": {
-                    "perSeriesAligner": "ALIGN_PERCENTILE_95",
-                    "alignmentPeriod": "60s"
-                  }
-                }
+                "prometheusQuery": "histogram_quantile(0.50,sum(rate(http_server_requests_seconds_bucket[5m])) by (le))"
               }
             }
           ]
         }
       },
       {
-        "title": "Pod CPU utilization (k8s containers) — namespace actividad1",
+        "title": "Latencia P95",
         "xyChart": {
           "dataSets": [
             {
               "timeSeriesQuery": {
-                "timeSeriesFilter": {
-                  "filter": "metric.type=\"container.googleapis.com/container/cpu/utilization\" resource.type=\"k8s_container\" metric.label.\"namespace_name\"=\"actividad1\"",
-                  "aggregation": {
-                    "perSeriesAligner": "ALIGN_MEAN",
-                    "alignmentPeriod": "60s"
-                  }
-                }
+                "prometheusQuery": "histogram_quantile(0.95,sum(rate(http_server_requests_seconds_bucket[5m])) by (le))"
               }
             }
           ]
         }
       },
       {
-        "title": "Pod Memory used (bytes) — namespace actividad1",
+        "title": "Latencia P99",
         "xyChart": {
           "dataSets": [
             {
               "timeSeriesQuery": {
-                "timeSeriesFilter": {
-                  "filter": "metric.type=\"container.googleapis.com/container/memory/working_set_bytes\" resource.type=\"k8s_container\" metric.label.\"namespace_name\"=\"actividad1\"",
-                  "aggregation": {
-                    "perSeriesAligner": "ALIGN_MEAN",
-                    "alignmentPeriod": "60s"
-                  }
-                }
+                "prometheusQuery": "histogram_quantile(0.99,sum(rate(http_server_requests_seconds_bucket[5m])) by (le))"
               }
             }
           ]
         }
       },
       {
-        "title": "Pod restarts (restarts count) — namespace actividad1",
+        "title": "CPU Aplicacion",
         "xyChart": {
           "dataSets": [
             {
               "timeSeriesQuery": {
-                "timeSeriesFilter": {
-                  "filter": "metric.type=\"kubernetes.io/container/restart_count\" resource.type=\"k8s_container\" metric.label.\"namespace_name\"=\"actividad1\"",
-                  "aggregation": {
-                    "perSeriesAligner": "ALIGN_DELTA",
-                    "alignmentPeriod": "60s"
-                  }
-                }
+                "prometheusQuery": "process_cpu_usage"
               }
             }
           ]
         }
       },
       {
-        "title": "Node CPU utilization (GCE instances / GKE nodes)",
+        "title": "CPU Sistema",
         "xyChart": {
           "dataSets": [
             {
               "timeSeriesQuery": {
-                "timeSeriesFilter": {
-                  "filter": "metric.type=\"compute.googleapis.com/instance/cpu/utilization\" resource.type=\"gce_instance\"",
-                  "aggregation": {
-                    "perSeriesAligner": "ALIGN_MEAN",
-                    "alignmentPeriod": "60s"
-                  }
-                }
+                "prometheusQuery": "system_cpu_usage"
               }
             }
           ]
         }
       },
       {
-        "title": "Node memory used % (agent) — if monitoring agent installed",
+        "title": "Memoria JVM Utilizada",
         "xyChart": {
           "dataSets": [
             {
               "timeSeriesQuery": {
-                "timeSeriesFilter": {
-                  "filter": "metric.type=\"agent.googleapis.com/memory/percent_used\" resource.type=\"gce_instance\"",
-                  "aggregation": {
-                    "perSeriesAligner": "ALIGN_MEAN",
-                    "alignmentPeriod": "60s"
-                  }
-                }
+                "prometheusQuery": "jvm_memory_used_bytes"
               }
             }
           ]
         }
       },
       {
-        "title": "Disk IO (read/write bytes) — nodes",
+        "title": "Memoria JVM Commit",
         "xyChart": {
           "dataSets": [
             {
               "timeSeriesQuery": {
-                "timeSeriesFilter": {
-                  "filter": "metric.type=\"compute.googleapis.com/instance/disk/read_bytes_count\" resource.type=\"gce_instance\"",
-                  "aggregation": { "perSeriesAligner": "ALIGN_RATE", "alignmentPeriod": "60s" }
-                }
-              }
-            },
-            {
-              "timeSeriesQuery": {
-                "timeSeriesFilter": {
-                  "filter": "metric.type=\"compute.googleapis.com/instance/disk/write_bytes_count\" resource.type=\"gce_instance\"",
-                  "aggregation": { "perSeriesAligner": "ALIGN_RATE", "alignmentPeriod": "60s" }
-                }
+                "prometheusQuery": "jvm_memory_committed_bytes"
               }
             }
           ]
         }
       },
       {
-        "title": "Network — instance traffic (bytes sent/received)",
+        "title": "Pausas GC",
         "xyChart": {
           "dataSets": [
             {
               "timeSeriesQuery": {
-                "timeSeriesFilter": {
-                  "filter": "metric.type=\"compute.googleapis.com/instance/network/sent_bytes_count\" resource.type=\"gce_instance\"",
-                  "aggregation": { "perSeriesAligner": "ALIGN_RATE", "alignmentPeriod": "60s" }
-                }
-              }
-            },
-            {
-              "timeSeriesQuery": {
-                "timeSeriesFilter": {
-                  "filter": "metric.type=\"compute.googleapis.com/instance/network/received_bytes_count\" resource.type=\"gce_instance\"",
-                  "aggregation": { "perSeriesAligner": "ALIGN_RATE", "alignmentPeriod": "60s" }
-                }
+                "prometheusQuery": "rate(jvm_gc_pause_seconds_count[5m])"
               }
             }
           ]
         }
       },
       {
-        "title": "Chaos experiment — simple marker (use custom metric to record experiment start/stop)",
+        "title": "JDBC Conexiones Activas",
+        "xyChart": {
+          "dataSets": [
+            {
+              "timeSeriesQuery": {
+                "prometheusQuery": "jdbc_connections_active"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "JDBC Conexiones Idle",
+        "xyChart": {
+          "dataSets": [
+            {
+              "timeSeriesQuery": {
+                "prometheusQuery": "jdbc_connections_idle"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "HikariCP Activas",
+        "xyChart": {
+          "dataSets": [
+            {
+              "timeSeriesQuery": {
+                "prometheusQuery": "hikaricp_connections_active"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "HikariCP Idle",
+        "xyChart": {
+          "dataSets": [
+            {
+              "timeSeriesQuery": {
+                "prometheusQuery": "hikaricp_connections_idle"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "HikariCP Pendientes",
+        "xyChart": {
+          "dataSets": [
+            {
+              "timeSeriesQuery": {
+                "prometheusQuery": "hikaricp_connections_pending"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Disponibilidad Servicio",
+        "scorecard": {
+          "timeSeriesQuery": {
+            "prometheusQuery": "avg(up) * 100"
+          }
+        }
+      },
+      {
+        "title": "OTEL Spans Exportados",
+        "xyChart": {
+          "dataSets": [
+            {
+              "timeSeriesQuery": {
+                "prometheusQuery": "rate(otelcol_exporter_sent_spans[5m])"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "OTEL Incoming Items",
+        "xyChart": {
+          "dataSets": [
+            {
+              "timeSeriesQuery": {
+                "prometheusQuery": "rate(otelcol_processor_incoming_items[5m])"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "OTEL Outgoing Items",
+        "xyChart": {
+          "dataSets": [
+            {
+              "timeSeriesQuery": {
+                "prometheusQuery": "rate(otelcol_processor_outgoing_items[5m])"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Estado Chaos Engineering",
         "text": {
-          "content": "Nota: Si quieres ver el timeline del experimento aquí, registra un custom metric `custom.googleapis.com/chaos/experiment_status` con values start/stop o usa logs-based metric. Este dashboard está filtrado al namespace actividad1 y la app esperada es app=maestria-inventario-products."
+          "content": "Validar durante experimentos Litmus: incremento P95/P99, reducción throughput, aumento CPU y variación de spans de OpenTelemetry."
         }
       }
     ]
-  },
-  "timeout": "0s"
+  }
 }

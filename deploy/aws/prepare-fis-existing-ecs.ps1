@@ -5,7 +5,7 @@ param(
     [string]$ProductsContainerName = 'maestria-inventario-products-api',
     [string]$AuditServiceName = 'td-maestriainventario-audi-api-prd-service-4c4nxx0x',
     [string]$AuditContainerName = 'maestria-inventario-audi-api',
-    [string]$DataServiceName = 'td-maestriainventario-service-api-prod-service-onouq3k1',
+    [string]$DataServiceName = 'td-maestria-inventario-service-api-prod-service-onouq3k1',
     [string]$DataContainerName = 'maestria-inventario-service-api',
     [ValidateRange(2, 50)][int]$DesiredCount = 2,
     [string]$FisExperimentRoleName = 'maestria-inventario-fis-experiment-role',

@@ -47,8 +47,8 @@ El workflow de AWS requiere que el cluster y los tres servicios ECS Fargate (pro
 | `ECS_CONTAINER_NAME` | `maestria-inventario-products-api` |
 | `ECS_AUDIT_SERVICE` | `td-maestriainventario-audi-api-prd-service-4c4nxx0x` |
 | `ECS_AUDIT_CONTAINER_NAME` | `maestria-inventario-audi-api` |
-| `ECS_DATA_SERVICE` | `td-maestriainventario-service-api-prod-service-onouq3k1` |
-| `ECS_DATA_CONTAINER_NAME` | `maestriainventario-service-api` |
+| `ECS_DATASERVICE_SERVICE` | `td-maestria-inventario-service-api-prod-service-onouq3k1` |
+| `ECS_SERVICE_CONTAINER_NAME` | `maestria-inventario-service-api` |
 | `DATA_SERVICE_URL` | URL base privada de data-service alcanzable desde productos, incluyendo esquema y puerto |
 
 Agrega estos secretos del repositorio GitHub: `AWS_ROLE_TO_ASSUME` con el ARN del rol IAM que confía en GitHub Actions mediante OIDC, `DOCKERHUB_USERNAME` con el usuario de Docker Hub y `DOCKERHUB_TOKEN` con un access token de Docker Hub (no la contraseña de la cuenta). Crea previamente los repositorios Docker Hub de productos y auditoría y permite que ECS descargue ambas imágenes. El rol IAM necesita permisos para describir y registrar definiciones de tarea, actualizar y consultar los tres servicios ECS, y pasar los roles de ejecución/tarea ECS (`iam:PassRole`); ya no requiere permisos para publicar en ECR.
@@ -64,7 +64,7 @@ Al completarse correctamente el workflow `CI DevSecOps` en `main`, el workflow d
 - `SonarQube`: Disponible en `http://localhost:9001`.
 - `Uso con Docker Compose`: Se puede levantar el entorno ejecutando `docker compose up -d --build`.
 - `service-b` (auditoría): disponible en `http://localhost:9094`; dentro de Docker el servicio A lo invoca como `http://service-b:9090`.
-- `data-service`: usa la misma imagen de productos con el perfil `data-service`; productos solicita `GET /data/analytics/{productId}` al guardar, sin cambiar el JSON de respuesta pública del POST. La llamada tiene timeout y es fail-open: si data-service no responde, se registra un warning y la creación del producto se conserva.
+- `data-service`: disponible desde el host en `http://localhost:9095`; dentro de Docker Compose escucha en `data-service:9090`. Usa la misma imagen de productos con el perfil `data-service`; productos solicita `GET /data/analytics/{productId}` al guardar, sin cambiar el JSON de respuesta pública del POST. La llamada tiene timeout y es fail-open: si data-service no responde, se registra un warning y la creación del producto se conserva.
 
 - La aplicación expone su API y métricas en `http://localhost:9092` y `http://localhost:9092/actuator/prometheus`.
 

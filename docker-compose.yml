@@ -78,6 +78,8 @@ services:
     build: .
     image: earamirez/maestria-inventario-products:latest
     container_name: inventario-data-service
+    ports:
+      - "9095:9090"
     environment:
       SERVER_PORT: 9090
       SPRING_PROFILES_ACTIVE: data-service

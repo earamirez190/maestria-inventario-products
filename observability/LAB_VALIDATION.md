@@ -214,15 +214,5 @@ TRACE=$(jq -r '.trace_id' evidence/local/data_products_$TS.json)
 echo $TRACE > evidence/local/trace_$TS.txt
 curl -s "http://localhost:16686/api/traces/$TRACE" | jq . > evidence/local/trace_full_$TS.json
 
-8) Checklist final antes de entregar
-- evidence/* poblada con: health, traces, grafana json, prometheus queries, chaos runs, alert counts
-- observability/maturity/report.md completado con links a evidence
-- commits en la rama develop-taller-gcp con cambios y READMEs actualizados
 
----
 
-Si quieres, hago esto por ti ahora:
-- Creo este archivo en observability/LAB_VALIDATION.md (hecho).
-- Puedo añadir scripts de captura automática en observability/scripts/collect_evidence.sh y commitearlos en la rama develop-taller-gcp.
-
-Dime si quieres que cree también el script collect_evidence.sh y lo suba al repo (lo puedo hacer ahora).

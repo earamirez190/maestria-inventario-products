@@ -34,3 +34,15 @@ kubectl apply -f ../../k8s/deployment.yaml
 El secreto `database-secret` debe existir antes del despliegue. Créalo desde
 un gestor de secretos o con `kubectl create secret`; no se debe versionar una
 contraseña real ni modificar `data-service-secret.example.yaml` con secretos.
+La clave debe contener `username`, `password` y `root-password`: las dos
+primeras las usa `data-service` contra Cloud SQL y la última el MySQL interno
+que usa `app/service-b` para sus datos de auditoría.
+
+Antes de `service-b` y `app`, aplica también el almacenamiento MySQL interno:
+
+```bash
+kubectl apply -f ../../k8s/mysql-pvc.yaml
+kubectl apply -f ../../k8s/mysql-service.yaml
+kubectl apply -f ../../k8s/mysql-deployment.yaml
+kubectl apply -f ../../k8s/configmap.yaml
+```

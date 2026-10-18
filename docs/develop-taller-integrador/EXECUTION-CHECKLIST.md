@@ -27,6 +27,10 @@ Guardar la respuesta del último request: contiene `trace_id`. Revisar en
 Jaeger/Grafana el recorrido `app → service-b → data-service → DB` y los
 atributos `db.system`, `db.name`, `db.operation` y `db.statement`.
 
+En GKE, el secreto `database-secret` debe tener `username`, `password` y
+`root-password`. `data-service` usa Cloud SQL mediante el proxy; `app` y
+`service-b` usan el MySQL interno para la persistencia de auditoría.
+
 ## B. AIOps
 
 ```bash

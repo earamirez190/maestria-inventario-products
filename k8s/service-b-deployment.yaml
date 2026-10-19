@@ -6,7 +6,7 @@ metadata:
   labels:
     app: service-b
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: service-b
@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: service-b
-          image: us-central1-docker.pkg.dev/mydemo-505323/actividad1-images/service-b:lab-integrador
+          image: us-central1-docker.pkg.dev/mydemo-505323/actividad1-images/service-b@sha256:49c728412ce0c257e50d28f54c3933fb3550f952c50bc496e564ff72b2a37b4d
           imagePullPolicy: Always
           ports:
             - name: http
@@ -69,8 +69,8 @@ spec:
             periodSeconds: 20
           resources:
             requests:
-              cpu: 100m
-              memory: 256Mi
+              cpu: 50m
+              memory: 128Mi
             limits:
               cpu: 500m
               memory: 512Mi

@@ -22,6 +22,10 @@ Después de aplicar, obtener credenciales y desplegar los manifiestos:
 gcloud container clusters get-credentials actividad1-gke \
   --zone us-central1-a --project mydemo-505323
 kubectl apply -f ../../k8s/namespace.yaml
+kubectl apply -f ../../k8s/otel-collector-serviceaccount.yaml
+kubectl apply -f ../../k8s/otel-collector-configmap.yaml
+kubectl apply -f ../../k8s/otel-collector-service.yaml
+kubectl apply -f ../../k8s/otel-collector-deployment.yaml
 kubectl apply -f ../../k8s/data-service-serviceaccount.yaml
 kubectl apply -f ../../k8s/data-service-configmap.yaml
 kubectl apply -f ../../k8s/data-service-service.yaml
@@ -30,6 +34,11 @@ kubectl apply -f ../../k8s/service-b-service.yaml
 kubectl apply -f ../../k8s/service-b-deployment.yaml
 kubectl apply -f ../../k8s/deployment.yaml
 ```
+
+Las imágenes de esta rama se publican para `linux/amd64` y los manifiestos
+usan sus digests para evitar errores de plataforma en GKE. Si se reconstruyen,
+usar `docker buildx build --platform linux/amd64 --provenance=false --sbom=false`
+y publicar nuevamente antes de aplicar los deployments.
 
 El secreto `database-secret` debe existir antes del despliegue. Créalo desde
 un gestor de secretos o con `kubectl create secret`; no se debe versionar una
@@ -45,4 +54,18 @@ kubectl apply -f ../../k8s/mysql-pvc.yaml
 kubectl apply -f ../../k8s/mysql-service.yaml
 kubectl apply -f ../../k8s/mysql-deployment.yaml
 kubectl apply -f ../../k8s/configmap.yaml
+```
+
+Después de crear la instancia de Cloud SQL, inicializar el esquema de
+`data-service` en `inventorydb` con el script SQL compatible con el motor
+MySQL. La tabla `products` debe existir antes de probar
+`/api/observability/data/products`; no se debe confundir con el MySQL interno
+que usa `app/service-b` para auditoría.
+
+Para el sandbox de dos nodos se dejan una réplica por servicio y solicitudes de
+CPU reducidas. Antes de experimentar caos, confirmar:
+
+```bash
+kubectl get pods -n actividad1
+kubectl get svc maestria-inventario-products -n actividad1
 ```

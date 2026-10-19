@@ -31,6 +31,9 @@ En GKE, el secreto `database-secret` debe tener `username`, `password` y
 `root-password`. `data-service` usa Cloud SQL mediante el proxy; `app` y
 `service-b` usan el MySQL interno para la persistencia de auditoría.
 
+La evidencia de la ejecución en el proyecto propio se conserva en
+`evidence/gcp/RESULTADOS_20261018.md`.
+
 ## B. AIOps
 
 ```bash
@@ -61,6 +64,10 @@ bash observability/experiments/run-local.sh
 El script guarda baseline, los dos experimentos, alertas, métricas y un
 `summary.json`. Completar allí el MTTD comparando el timestamp de inicio con el
 timestamp de la primera alerta. El objetivo es menor o igual a 120 segundos.
+
+Los dos experimentos también se ejecutaron en el sandbox GKE. Si no existe una
+política activa de Cloud Monitoring, el MTTD debe quedar marcado como
+pendiente; no se debe presentar un valor inventado.
 
 ## E. Madurez y entrega
 

@@ -115,3 +115,32 @@ resource "google_service_account_iam_member" "workload_identity" {
   role               = "roles/iam.workloadIdentityUser"
   member             = "serviceAccount:${var.project_id}.svc.id.goog[actividad1/data-service]"
 }
+
+resource "google_service_account" "otel_collector" {
+  account_id   = "otel-collector-gsa"
+  display_name = "OpenTelemetry Collector cloud identity"
+}
+
+resource "google_project_iam_member" "otel_trace_agent" {
+  project = var.project_id
+  role    = "roles/cloudtrace.agent"
+  member  = "serviceAccount:${google_service_account.otel_collector.email}"
+}
+
+resource "google_project_iam_member" "otel_metric_writer" {
+  project = var.project_id
+  role    = "roles/monitoring.metricWriter"
+  member  = "serviceAccount:${google_service_account.otel_collector.email}"
+}
+
+resource "google_project_iam_member" "otel_log_writer" {
+  project = var.project_id
+  role    = "roles/logging.logWriter"
+  member  = "serviceAccount:${google_service_account.otel_collector.email}"
+}
+
+resource "google_service_account_iam_member" "otel_workload_identity" {
+  service_account_id = google_service_account.otel_collector.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "serviceAccount:${var.project_id}.svc.id.goog[actividad1/otel-collector]"
+}

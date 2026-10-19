@@ -6,7 +6,7 @@ metadata:
   labels:
     app: maestria-inventario-products
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: maestria-inventario-products
@@ -28,7 +28,7 @@ spec:
               done
       containers:
         - name: maestria-inventario-products
-          image: us-central1-docker.pkg.dev/mydemo-505323/actividad1-images/maestria-inventario-products:lab-integrador
+          image: us-central1-docker.pkg.dev/mydemo-505323/actividad1-images/maestria-inventario-products@sha256:1af1914113aca346f34bfaf1b612e16181edca7b2b9cdebdd1967342b589b052
           imagePullPolicy: Always
           ports:
             - name: http
@@ -95,8 +95,8 @@ spec:
             failureThreshold: 3
           resources:
             requests:
-              cpu: "200m"
-              memory: "512Mi"
+              cpu: "50m"
+              memory: "256Mi"
             limits:
               cpu: "500m"
               memory: "1Gi"

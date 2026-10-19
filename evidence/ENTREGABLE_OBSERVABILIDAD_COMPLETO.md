@@ -273,4 +273,85 @@ Métricas monitoreadas:
 - Memoria
 - Spans exportados
 
+Modulo 1
 
+Data-Service Cloud Sql
+
+![alt text](image-31.png)
+
+Modulo 2 - DataBase Span
+
+![alt text](image-32.png)
+
+Modulo 3. Cloud Service Mesh
+   │
+   ├── maestria-inventario-products
+   ├── data-service
+   └── mysql
+
+   ![alt text](image-33.png)
+
+Modulo 4 AIOps
+CPU Alta en Kubernetes
+
+![alt text](image-34.png)
+
+Reinicio de Contenedores
+
+![alt text](image-35.png)
+
+Modulo 5 - VPC Flow Logs (GCP)
+
+![alt text](image-36.png)
+
+Implementar Security Command Center
+
+![alt text](image-37.png)
+
+Dashboard de Seguridad
+
+![alt text](image-38.png)
+
+Experimento Caos
+
+![alt text](image-41.png)
+
+MTTD = 65 segundos
+Objetivo < 2 minutos
+Resultado: Cumplido
+
+Segundo Experimento de Caos
+
+Medir MTTD
+
+MTTD = 70 segundos
+Objetivo < 2 minutos
+Resultado: Cumplido
+
+![alt text](image-39.png)
+
+Se ejecutaron dos experimentos de Chaos Engineering:
+1. Inyección de latencia en la red.
+2. Interrupción controlada del servicio data-service.
+
+La plataforma de observabilidad detectó ambos eventos en menos de 2 minutos, cumpliendo el objetivo de MTTD establecido.
+
+Paso 6 Reporte de Madurez
+
+![alt text](image-40.png)
+
+Paso 7 - RoadMap 7 Meses
+
+Mes 1
+
+Cloud SQL
+AWS RDS
+Cloud Trace
+
+Mes 2
+Cloud Service Mesh
+Security Command Center Avanzado
+
+Mes 3 
+AIOps con correlación automática
+Remediación automática

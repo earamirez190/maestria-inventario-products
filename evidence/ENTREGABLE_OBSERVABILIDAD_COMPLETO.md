@@ -87,6 +87,10 @@ mysql
 
 maestria-inventario-products
 otel-collector
+
+![alt text](image-42.png)
+
+
 chaos-operator-ce
 ```
 

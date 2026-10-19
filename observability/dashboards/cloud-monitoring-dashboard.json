@@ -1,238 +1,131 @@
 {
   "displayName": "Maestria Inventario - Observabilidad y Chaos Engineering",
+  "etag": "65f1ea70b180de8bf2d0649ea8f60bb8",
   "gridLayout": {
     "columns": 2,
     "widgets": [
       {
-        "title": "Throughput (Requests/sec)",
+        "title": "Errores data-service (rate)",
         "xyChart": {
           "dataSets": [
             {
               "plotType": "LINE",
               "timeSeriesQuery": {
-                "prometheusQuery": "sum(rate(http_server_requests_seconds_count[5m]))"
+                "timeSeriesFilter": {
+                  "filter": "metric.type=\"logging.googleapis.com/user/data_service_errors\" resource.type=\"k8s_container\" resource.labels.namespace_name=\"actividad1\"",
+                  "aggregation": {
+                    "alignmentPeriod": "60s",
+                    "perSeriesAligner": "ALIGN_RATE",
+                    "crossSeriesReducer": "REDUCE_SUM"
+                  }
+                }
               }
             }
-          ]
-        }
-      },
-      {
-        "title": "Latencia Promedio",
-        "xyChart": {
-          "dataSets": [
+          ],
+          "thresholds": [
             {
-              "plotType": "LINE",
-              "timeSeriesQuery": {
-                "prometheusQuery": "rate(http_server_requests_seconds_sum[5m]) / rate(http_server_requests_seconds_count[5m])"
-              }
+              "value": 0.01,
+              "targetAxis": "Y1",
+              "label": "Umbral alerta"
             }
-          ]
-        }
-      },
-      {
-        "title": "Latencia P50",
-        "xyChart": {
-          "dataSets": [
-            {
-              "timeSeriesQuery": {
-                "prometheusQuery": "histogram_quantile(0.50,sum(rate(http_server_requests_seconds_bucket[5m])) by (le))"
-              }
-            }
-          ]
-        }
-      },
-      {
-        "title": "Latencia P95",
-        "xyChart": {
-          "dataSets": [
-            {
-              "timeSeriesQuery": {
-                "prometheusQuery": "histogram_quantile(0.95,sum(rate(http_server_requests_seconds_bucket[5m])) by (le))"
-              }
-            }
-          ]
-        }
-      },
-      {
-        "title": "Latencia P99",
-        "xyChart": {
-          "dataSets": [
-            {
-              "timeSeriesQuery": {
-                "prometheusQuery": "histogram_quantile(0.99,sum(rate(http_server_requests_seconds_bucket[5m])) by (le))"
-              }
-            }
-          ]
-        }
-      },
-      {
-        "title": "CPU Aplicacion",
-        "xyChart": {
-          "dataSets": [
-            {
-              "timeSeriesQuery": {
-                "prometheusQuery": "process_cpu_usage"
-              }
-            }
-          ]
-        }
-      },
-      {
-        "title": "CPU Sistema",
-        "xyChart": {
-          "dataSets": [
-            {
-              "timeSeriesQuery": {
-                "prometheusQuery": "system_cpu_usage"
-              }
-            }
-          ]
-        }
-      },
-      {
-        "title": "Memoria JVM Utilizada",
-        "xyChart": {
-          "dataSets": [
-            {
-              "timeSeriesQuery": {
-                "prometheusQuery": "jvm_memory_used_bytes"
-              }
-            }
-          ]
-        }
-      },
-      {
-        "title": "Memoria JVM Commit",
-        "xyChart": {
-          "dataSets": [
-            {
-              "timeSeriesQuery": {
-                "prometheusQuery": "jvm_memory_committed_bytes"
-              }
-            }
-          ]
-        }
-      },
-      {
-        "title": "Pausas GC",
-        "xyChart": {
-          "dataSets": [
-            {
-              "timeSeriesQuery": {
-                "prometheusQuery": "rate(jvm_gc_pause_seconds_count[5m])"
-              }
-            }
-          ]
-        }
-      },
-      {
-        "title": "JDBC Conexiones Activas",
-        "xyChart": {
-          "dataSets": [
-            {
-              "timeSeriesQuery": {
-                "prometheusQuery": "jdbc_connections_active"
-              }
-            }
-          ]
-        }
-      },
-      {
-        "title": "JDBC Conexiones Idle",
-        "xyChart": {
-          "dataSets": [
-            {
-              "timeSeriesQuery": {
-                "prometheusQuery": "jdbc_connections_idle"
-              }
-            }
-          ]
-        }
-      },
-      {
-        "title": "HikariCP Activas",
-        "xyChart": {
-          "dataSets": [
-            {
-              "timeSeriesQuery": {
-                "prometheusQuery": "hikaricp_connections_active"
-              }
-            }
-          ]
-        }
-      },
-      {
-        "title": "HikariCP Idle",
-        "xyChart": {
-          "dataSets": [
-            {
-              "timeSeriesQuery": {
-                "prometheusQuery": "hikaricp_connections_idle"
-              }
-            }
-          ]
-        }
-      },
-      {
-        "title": "HikariCP Pendientes",
-        "xyChart": {
-          "dataSets": [
-            {
-              "timeSeriesQuery": {
-                "prometheusQuery": "hikaricp_connections_pending"
-              }
-            }
-          ]
-        }
-      },
-      {
-        "title": "Disponibilidad Servicio",
-        "scorecard": {
-          "timeSeriesQuery": {
-            "prometheusQuery": "avg(up) * 100"
+          ],
+          "yAxis": {
+            "label": "errores/s",
+            "scale": "LINEAR"
           }
         }
       },
       {
-        "title": "OTEL Spans Exportados",
+        "title": "Latencia p99 data-service",
         "xyChart": {
           "dataSets": [
             {
+              "plotType": "LINE",
               "timeSeriesQuery": {
-                "prometheusQuery": "rate(otelcol_exporter_sent_spans[5m])"
+                "timeSeriesFilter": {
+                  "filter": "metric.type=\"logging.googleapis.com/user/data_service_latency_distribution\" resource.type=\"k8s_container\" resource.labels.namespace_name=\"actividad1\"",
+                  "aggregation": {
+                    "alignmentPeriod": "60s",
+                    "perSeriesAligner": "ALIGN_PERCENTILE_99",
+                    "crossSeriesReducer": "REDUCE_MAX"
+                  }
+                }
               }
             }
-          ]
+          ],
+          "thresholds": [
+            {
+              "value": 0.2,
+              "targetAxis": "Y1",
+              "label": "SLO 200 ms"
+            }
+          ],
+          "yAxis": {
+            "label": "segundos",
+            "scale": "LINEAR"
+          }
         }
       },
       {
-        "title": "OTEL Incoming Items",
+        "title": "CPU de contenedores GKE",
         "xyChart": {
           "dataSets": [
             {
+              "plotType": "LINE",
               "timeSeriesQuery": {
-                "prometheusQuery": "rate(otelcol_processor_incoming_items[5m])"
+                "timeSeriesFilter": {
+                  "filter": "metric.type=\"kubernetes.io/container/cpu/limit_utilization\" resource.type=\"k8s_container\" resource.labels.namespace_name=\"actividad1\"",
+                  "aggregation": {
+                    "alignmentPeriod": "60s",
+                    "perSeriesAligner": "ALIGN_MEAN",
+                    "crossSeriesReducer": "REDUCE_MAX"
+                  }
+                }
               }
             }
-          ]
+          ],
+          "yAxis": {
+            "label": "utilización",
+            "scale": "LINEAR"
+          }
         }
       },
       {
-        "title": "OTEL Outgoing Items",
+        "title": "Memoria usada en contenedores GKE",
         "xyChart": {
           "dataSets": [
             {
+              "plotType": "LINE",
               "timeSeriesQuery": {
-                "prometheusQuery": "rate(otelcol_processor_outgoing_items[5m])"
+                "timeSeriesFilter": {
+                  "filter": "metric.type=\"kubernetes.io/container/memory/used_bytes\" resource.type=\"k8s_container\" resource.labels.namespace_name=\"actividad1\"",
+                  "aggregation": {
+                    "alignmentPeriod": "60s",
+                    "perSeriesAligner": "ALIGN_MEAN",
+                    "crossSeriesReducer": "REDUCE_MAX"
+                  }
+                }
               }
             }
-          ]
+          ],
+          "yAxis": {
+            "label": "bytes",
+            "scale": "LINEAR"
+          }
         }
       },
       {
-        "title": "Estado Chaos Engineering",
+        "title": "Logs de consultas y errores",
+        "logsPanel": {
+          "filter": "resource.type=\"k8s_container\" AND resource.labels.namespace_name=\"actividad1\" AND (jsonPayload.message=\"Products query completada\" OR jsonPayload.message=\"Chaos: error inyectado\")",
+          "resourceNames": ["projects/mydemo-505323"]
+        }
+      },
+      {
+        "title": "Estado del laboratorio",
         "text": {
-          "content": "Validar durante experimentos Litmus: incremento P95/P99, reducción throughput, aumento CPU y variación de spans de OpenTelemetry."
+          "content": "Sandbox GKE actividad1. Las métricas de aplicación se consultan mediante métricas logs-based de Cloud Monitoring. Las trazas se consultan en Cloud Trace usando el trace_id de la respuesta o de Cloud Logging.",
+          "format": "MARKDOWN"
         }
       }
     ]

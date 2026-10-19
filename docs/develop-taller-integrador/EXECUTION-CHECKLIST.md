@@ -51,9 +51,10 @@ comparar el número de alertas en la misma ventana.
 PROJECT_ID=mydemo-505323 bash observability/network-security/gcp-setup.sh
 ```
 
-Ese comando solo muestra lo que se aplicaría. Para aplicarlo en un sandbox,
-usar `APPLY=1` y después capturar Flow Logs, hallazgos de SCC y el dashboard de
-`observability/dashboards/golden-signals-security.json`.
+En el proyecto propio se ejecutó con `APPLY=1`: Flow Logs quedaron habilitados
+en la subred `default`, se creó `vpc_denied_traffic` y se publicó el dashboard
+`observability/dashboards/golden-signals-security-gcp.json`. SCC queda sujeto a
+la edición y permisos de la organización.
 
 ## D. Chaos controlado
 
@@ -65,9 +66,9 @@ El script guarda baseline, los dos experimentos, alertas, métricas y un
 `summary.json`. Completar allí el MTTD comparando el timestamp de inicio con el
 timestamp de la primera alerta. El objetivo es menor o igual a 120 segundos.
 
-Los dos experimentos también se ejecutaron en el sandbox GKE. Si no existe una
-política activa de Cloud Monitoring, el MTTD debe quedar marcado como
-pendiente; no se debe presentar un valor inventado.
+Los dos experimentos también se ejecutaron en el sandbox GKE y se restauraron a
+cero. Las políticas GCP quedaron activas; el MTTD se debe cronometrar cuando la
+consola muestre el incidente, sin inventar un valor si todavía no aparece.
 
 ## E. Madurez y entrega
 

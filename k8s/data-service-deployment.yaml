@@ -7,6 +7,8 @@ metadata:
     app: data-service
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: data-service
@@ -20,7 +22,7 @@ spec:
       serviceAccountName: data-service
       containers:
         - name: data-service
-          image: us-central1-docker.pkg.dev/mydemo-505323/actividad1-images/data-service@sha256:e111309351bcf3ba38cea5cf92a22a8b8e7a737353c9f4c11bdee3ff3044fee5
+          image: us-central1-docker.pkg.dev/mydemo-505323/actividad1-images/data-service@sha256:5715682ac46d81ca4b8d1ac85c6ae8c89f441ebe34648d0918130ec11fc805ea
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -41,6 +43,10 @@ spec:
                   key: password
             - name: DATABASE_URL
               value: mysql://$(DB_USER):$(DB_PASSWORD)@127.0.0.1:3306/inventorydb
+            - name: CHAOS_LATENCY_MS
+              value: "0"
+            - name: CHAOS_ERROR_RATE
+              value: "0"
           readinessProbe:
             httpGet:
               path: /ready

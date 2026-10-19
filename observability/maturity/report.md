@@ -7,14 +7,14 @@ capturas: después de ejecutar el checklist se deben enlazar los archivos de
 
 | Dominio | Puntuación (1-5) | Evidencia / Comentarios |
 |---|---:|---|
-| Instrumentation | 4 | App, service-b y data-service tienen instrumentación OTel; data-service incluye spans DB, métricas y logs OTLP. Evidencia: `services/data-service/src/main.py` y `observability/otel-collector-config.yaml`. |
-| Tracing | 3 | Ruta app → service-b → data-service devuelve `trace_id` y exporta OTLP local. Falta evidencia de Cloud Trace/X-Ray en nube. |
-| Metrics | 4 | Métricas de requests, errores, p99 DB y conexiones; reglas de recording y dashboards incluidos. Falta retención gestionada. |
-| Logs | 3 | Logs JSON con `trace_id`/`span_id` y pipeline Loki local. Falta validar consultas centralizadas en GCP/AWS. |
-| Storage | 2 | Persistencia local y Cloud SQL/RDS parametrizados; falta confirmar backup, retención y recuperación en cada cloud. |
-| Analysis | 3 | Baseline + 2σ y comparación contra umbral estático implementados en Prometheus. Falta ejecutar la comparación con ventanas reales. |
-| Alerting | 3 | Alertas de correlación, p99 y error rate con runbook; falta canal de notificación y enriquecimiento cloud. |
-| Operations | 3 | Manifiestos, IaC GCP, scripts de chaos y recolección de evidencia versionados. Falta ejecutar rollback y documentar MTTD real. |
+| Instrumentation | 4 | App, service-b y data-service tienen instrumentación OTel; data-service incluye spans DB, métricas y logs OTLP. Los logs de caos incluyen `trace_id` y `span_id`. Evidencia: `services/data-service/src/main.py`. |
+| Tracing | 4 | La ruta app → service-b → data-service devuelve `trace_id`; el Collector exporta a Cloud Trace y Cloud Logging conserva la correlación. Evidencia: `evidence/gcp/RESULTADOS_20261018.md`. |
+| Metrics | 4 | Métricas de requests, errores, latencia completa y consultas DB; existen dashboards y métricas logs-based en GCP. Falta retención/SLO gestionado formal. |
+| Logs | 4 | Logs JSON con `trace_id`/`span_id`, exportación OTLP y consulta confirmada en Cloud Logging. AWS queda pendiente. |
+| Storage | 3 | Cloud SQL MySQL operativo con tabla `products` y proxy autenticado mediante Workload Identity; backup/recuperación y RDS no fueron validados. |
+| Analysis | 4 | Existen baseline + 2σ local y métricas GCP para errores/latencia; la comparación contra umbral estático está definida en la política correlacionada. |
+| Alerting | 4 | Políticas GCP de error rate y correlación error + p99 creadas, habilitadas y documentadas con `trace_id`; falta medir MTTD a partir de un incidente visible. |
+| Operations | 4 | IaC, GKE, Cloud SQL, Workload Identity, dashboards, Flow Logs, chaos con restauración y evidencia versionados. Service mesh administrado y MTTD son pendientes explícitos. |
 
 ## Evidencia requerida para cerrar la evaluación
 
@@ -22,15 +22,21 @@ capturas: después de ejecutar el checklist se deben enlazar los archivos de
    logs y reglas.
 2. `evidence/chaos/run_<timestamp>/summary.json` con baseline, latencia,
    errores, p95, tasa de error y tiempos de alerta.
-3. Captura/export del dashboard de Monitoring y de los logs de Flow Logs.
-4. Captura de la alerta con enlace al trace y registro de MTTD.
+3. Captura/export del dashboard de Monitoring y de los logs de Flow Logs. En
+   GCP ya están creados `f6628f0b-d102-4fc6-a584-36044795e30a` y
+   `e6f87e43-65ce-44fe-bde6-1c184ad3f765`.
+4. Captura del incidente de la política `3165301636611085493` con enlace al
+   trace y registro de MTTD; esta es la única evidencia GCP aún manual.
 5. Confirmación de los recursos Cloud SQL/GKE/RDS y sus controles de acceso.
 
 ## Roadmap de 3 meses
 
-- Semanas 1–2: cerrar GKE/Cloud SQL, collector gestionado y SLOs formales.
-- Semanas 3–4: habilitar Flow Logs, Security Command Center y canales de alerta.
+- Semanas 1–2: capturar el incidente de Cloud Monitoring y el MTTD real; cerrar
+  los SLOs formales y canales de notificación.
+- Semanas 3–4: habilitar/validar Security Command Center y Flow Logs con la
+  edición disponible en la organización.
 - Mes 2: comparar AIOps contra umbrales estáticos con al menos tres ventanas de
   carga y ajustar el error budget.
-- Mes 3: repetir chaos en sandbox, validar rollback, revisar permisos y publicar
-  el reporte PDF de 10 páginas con video y evidencias reproducibles.
+- Mes 3: habilitar service mesh administrado en un sandbox con capacidad
+  suficiente, repetir chaos y publicar el PDF de 10 páginas con video y
+  evidencias reproducibles.

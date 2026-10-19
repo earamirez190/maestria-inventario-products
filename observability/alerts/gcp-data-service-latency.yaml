@@ -1,0 +1,18 @@
+name: data_service_latency_distribution
+description: Latencia completa de peticiones a products emitida por data-service en GKE
+filter: >-
+  resource.type="k8s_container"
+  AND resource.labels.namespace_name="actividad1"
+  AND resource.labels.container_name="data-service"
+  AND jsonPayload.message="Products query completada"
+metricDescriptor:
+  metricKind: DELTA
+  valueType: DISTRIBUTION
+  unit: s
+  description: Duración en segundos de las peticiones de productos, incluida la latencia inyectada
+valueExtractor: EXTRACT(jsonPayload.request_duration)
+bucketOptions:
+  exponentialBuckets:
+    numFiniteBuckets: 20
+    growthFactor: 2
+    scale: 0.001

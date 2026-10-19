@@ -148,15 +148,26 @@ def get_connection():
 CHAOS_LATENCY_MS  = int(os.getenv("CHAOS_LATENCY_MS", "0"))    # inyectar latencia
 CHAOS_ERROR_RATE  = float(os.getenv("CHAOS_ERROR_RATE", "0"))  # 0.0-1.0
 
+def active_trace_id():
+    """Devuelve el trace_id de la petición actual para correlacionar logs y trazas."""
+    span_context = trace.get_current_span().get_span_context()
+    return format(span_context.trace_id, "032x") if span_context.is_valid else None
+
 def apply_chaos():
     """Aplica los experimentos de caos si están configurados."""
     if CHAOS_LATENCY_MS > 0:
         time.sleep(CHAOS_LATENCY_MS / 1000)
-        logger.warning("Chaos: latencia inyectada", extra={"latency_ms": CHAOS_LATENCY_MS})
+        logger.warning("Chaos: latencia inyectada", extra={
+            "latency_ms": CHAOS_LATENCY_MS,
+            "trace_id": active_trace_id(),
+        })
 
     if CHAOS_ERROR_RATE > 0 and random.random() < CHAOS_ERROR_RATE:
         data_errors_total.add(1, {"endpoint": "/data/products", "cloud": CLOUD_PROVIDER})
-        logger.error("Chaos: error inyectado", extra={"error_rate": CHAOS_ERROR_RATE})
+        logger.error("Chaos: error inyectado", extra={
+            "error_rate": CHAOS_ERROR_RATE,
+            "trace_id": active_trace_id(),
+        })
         raise HTTPException(status_code=500, detail="Chaos: error inyectado deliberadamente")
 
 # ── App ────────────────────────────────────────────────────────────
@@ -216,7 +227,15 @@ async def get_products(category: str = "all"):
     data_requests_total.add(1, {"endpoint": "/data/products", "cloud": CLOUD_PROVIDER})
 
     # Aplicar chaos si está configurado (Módulo D)
-    apply_chaos()
+    request_start = time.time()
+    with tracer.start_as_current_span("chaos.experiment") as chaos_span:
+        try:
+            apply_chaos()
+        except HTTPException as exc:
+            chaos_span.set_status(trace.StatusCode.ERROR, str(exc.detail))
+            raise
+        else:
+            chaos_span.set_status(trace.StatusCode.OK)
 
     start = time.time()
     db_connections_active.add(1)
@@ -272,7 +291,9 @@ async def get_products(category: str = "all"):
                 "rows":     len(rows),
                 "category": category,
                 "duration": round(duration, 4),
+                "request_duration": round(time.time() - request_start, 4),
                 "cloud":    CLOUD_PROVIDER,
+                "trace_id": active_trace_id(),
             })
 
             return {

@@ -1,0 +1,62 @@
+{
+  "displayName": "Golden Signals de Seguridad - actividad1",
+  "gridLayout": {
+    "columns": 2,
+    "widgets": [
+      {
+        "title": "Tráfico VPC rechazado",
+        "xyChart": {
+          "dataSets": [
+            {
+              "plotType": "LINE",
+              "timeSeriesQuery": {
+                "timeSeriesFilter": {
+                  "filter": "metric.type=\"logging.googleapis.com/user/vpc_denied_traffic\"",
+                  "aggregation": {
+                    "alignmentPeriod": "60s",
+                    "perSeriesAligner": "ALIGN_RATE",
+                    "crossSeriesReducer": "REDUCE_SUM"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Errores de data-service",
+        "xyChart": {
+          "dataSets": [
+            {
+              "plotType": "LINE",
+              "timeSeriesQuery": {
+                "timeSeriesFilter": {
+                  "filter": "metric.type=\"logging.googleapis.com/user/data_service_errors\" resource.type=\"k8s_container\" resource.labels.namespace_name=\"actividad1\"",
+                  "aggregation": {
+                    "alignmentPeriod": "60s",
+                    "perSeriesAligner": "ALIGN_RATE",
+                    "crossSeriesReducer": "REDUCE_SUM"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "title": "Registros de seguridad",
+        "logsPanel": {
+          "filter": "resource.type=\"k8s_container\" AND resource.labels.namespace_name=\"actividad1\" AND (severity>=WARNING OR jsonPayload.message: \"auth\")",
+          "resourceNames": ["projects/mydemo-505323"]
+        }
+      },
+      {
+        "title": "Alcance",
+        "text": {
+          "content": "Dashboard del sandbox actividad1. Revisar autenticación fallida, tráfico rechazado y errores de los servicios. Los CVEs se consultan en Security Command Center cuando la edición del proyecto esté habilitada.",
+          "format": "MARKDOWN"
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "displayName": "GKE data-service — error rate detectado",
+  "combiner": "OR",
+  "conditions": [
+    {
+      "displayName": "Errores del data-service en Cloud Logging",
+      "conditionThreshold": {
+        "filter": "metric.type=\"logging.googleapis.com/user/data_service_errors\" AND resource.type=\"k8s_container\" AND resource.labels.namespace_name=\"actividad1\"",
+        "comparison": "COMPARISON_GT",
+        "thresholdValue": 0.01,
+        "duration": "60s",
+        "aggregations": [
+          {
+            "alignmentPeriod": "60s",
+            "perSeriesAligner": "ALIGN_RATE",
+            "crossSeriesReducer": "REDUCE_SUM"
+          }
+        ]
+      }
+    }
+  ],
+  "documentation": {
+    "mimeType": "text/markdown",
+    "content": "Alerta de prueba del laboratorio. Buscar el trace_id del request fallido en Cloud Logging y Cloud Trace."
+  },
+  "alertStrategy": {
+    "autoClose": "1800s"
+  },
+  "userLabels": {
+    "laboratorio": "observabilidad",
+    "servicio": "data-service",
+    "deteccion": "error-rate"
+  },
+  "enabled": true
+}

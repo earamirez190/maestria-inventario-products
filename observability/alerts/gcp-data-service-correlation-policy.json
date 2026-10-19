@@ -1,0 +1,57 @@
+{
+  "displayName": "GKE data-service — errores y latencia p99",
+  "combiner": "AND",
+  "conditions": [
+    {
+      "displayName": "Errores del data-service por encima de baseline operativo",
+      "conditionThreshold": {
+        "filter": "metric.type=\"logging.googleapis.com/user/data_service_errors\" AND resource.type=\"k8s_container\" AND resource.labels.namespace_name=\"actividad1\"",
+        "comparison": "COMPARISON_GT",
+        "thresholdValue": 0.01,
+        "duration": "60s",
+        "aggregations": [
+          {
+            "alignmentPeriod": "60s",
+            "perSeriesAligner": "ALIGN_RATE",
+            "crossSeriesReducer": "REDUCE_SUM"
+          }
+        ],
+        "trigger": {
+          "count": 1
+        }
+      }
+    },
+    {
+      "displayName": "Latencia p99 del data-service sobre 200 ms",
+      "conditionThreshold": {
+        "filter": "metric.type=\"logging.googleapis.com/user/data_service_latency_distribution\" AND resource.type=\"k8s_container\" AND resource.labels.namespace_name=\"actividad1\"",
+        "comparison": "COMPARISON_GT",
+        "thresholdValue": 0.2,
+        "duration": "60s",
+        "aggregations": [
+          {
+            "alignmentPeriod": "60s",
+            "perSeriesAligner": "ALIGN_PERCENTILE_99",
+            "crossSeriesReducer": "REDUCE_MAX"
+          }
+        ],
+        "trigger": {
+          "count": 1
+        }
+      }
+    }
+  ],
+  "documentation": {
+    "mimeType": "text/markdown",
+    "content": "Correlación del laboratorio: error_rate > baseline operativo y latency_p99 > 200 ms. Revisar el trace_id del log fallido en Cloud Logging y abrirlo en Cloud Trace."
+  },
+  "alertStrategy": {
+    "autoClose": "1800s"
+  },
+  "userLabels": {
+    "laboratorio": "observabilidad",
+    "servicio": "data-service",
+    "deteccion": "correlacion-error-latencia"
+  },
+  "enabled": true
+}

@@ -17,6 +17,45 @@
 - Despliegue en GCP: `.github/workflows/deploy.yaml` publica la imagen en Artifact Registry y actualiza GKE.
 - Despliegue en AWS: `.github/workflows/deploy-aws.yaml` publica la imagen en ECR y actualiza un servicio ECS Fargate existente.
 
+## Evidencia del laboratorio integrador de observabilidad
+
+La entrega técnica consolidada está en
+[`ENTREGABLE_OBSERVABILIDAD_COMPLETO.md`](ENTREGABLE_OBSERVABILIDAD_COMPLETO.md).
+La validación GCP y los resultados observados están en
+[`evidence/gcp/RESULTADOS_20261018.md`](evidence/gcp/RESULTADOS_20261018.md) y
+los resultados reproducibles de Chaos Engineering están en
+[`evidence/chaos/RESULTADOS_20261018T234346Z.md`](evidence/chaos/RESULTADOS_20261018T234346Z.md).
+
+### Entorno GCP validado
+
+| Recurso | Valor |
+| --- | --- |
+| Proyecto | `mydemo-505323` |
+| Cluster / zona | `actividad1-gke` / `us-central1-a` |
+| Namespace | `actividad1` |
+| Endpoint | `http://34.135.138.233` |
+| Dashboard principal | [Cloud Monitoring](https://console.cloud.google.com/monitoring/dashboards/builder/f6628f0b-d102-4fc6-a584-36044795e30a?project=mydemo-505323) |
+| Dashboard de seguridad | [Golden Signals](https://console.cloud.google.com/monitoring/dashboards/builder/e6f87e43-65ce-44fe-bde6-1c184ad3f765?project=mydemo-505323) |
+| Alertas | [Cloud Monitoring Alerting](https://console.cloud.google.com/monitoring/alerting?project=mydemo-505323) |
+| Trazas | [Cloud Trace Explorer](https://console.cloud.google.com/traces/list?project=mydemo-505323) |
+
+La arquitectura GCP usa Google Managed Service for Prometheus y Cloud
+Monitoring; el stack Prometheus/Grafana/Loki/Jaeger definido en Docker Compose
+corresponde al entorno local. Las capturas y resultados deben distinguir ambos
+entornos.
+
+### Pruebas rápidas GCP
+
+```bash
+kubectl -n actividad1 get pods
+curl -i http://34.135.138.233/api/observability/data/products
+```
+
+Para el sandbox, los experimentos de video se activan y restauran con las
+variables `CHAOS_LATENCY_MS` en `service-b` y `CHAOS_ERROR_RATE` en
+`data-service`. Los scripts en `observability/chaos/` usan Docker Compose y
+son únicamente para pruebas locales.
+
 ## Docker
 
 - `Dockerfile`: construye la aplicacion Spring Boot con Java 21.

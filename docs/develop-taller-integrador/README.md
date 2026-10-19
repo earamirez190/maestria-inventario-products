@@ -127,3 +127,18 @@ El esqueleto de `data-service`, la instrumentación OTel, los manifiestos GKE,
 las reglas de alertas, los dashboards, los experimentos y la IaC GCP están
 versionados. La activación de GKE, Cloud SQL, Flow Logs, SCC y RDS se ejecuta
 solo con credenciales y recursos del sandbox correspondiente.
+
+## Entrega y evidencias de la ejecución GCP
+
+La versión consolidada del informe se encuentra en
+[`ENTREGABLE_OBSERVABILIDAD_COMPLETO.md`](../../ENTREGABLE_OBSERVABILIDAD_COMPLETO.md).
+Los resultados observados del proyecto `mydemo-505323` están en
+[`evidence/gcp/RESULTADOS_20261018.md`](../../evidence/gcp/RESULTADOS_20261018.md)
+y el resumen reproducible de Chaos Engineering en
+[`evidence/chaos/RESULTADOS_20261018T234346Z.md`](../../evidence/chaos/RESULTADOS_20261018T234346Z.md).
+
+La ejecución distingue entre capacidades verificadas en GCP y componentes
+disponibles solo en Docker Compose local. En particular, Managed Prometheus y
+Cloud Monitoring son el backend remoto utilizado en GCP; Grafana, Loki y
+Jaeger no se presentan como desplegados en el cluster GKE sin evidencia
+adicional.
